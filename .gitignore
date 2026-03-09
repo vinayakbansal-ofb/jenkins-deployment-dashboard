@@ -1,0 +1,13 @@
+node_modules/
+package-lock.json
+.DS_Store
+*.log
+.env
+deployments.db
+*.sqlite3
+public/css/dashboard.css.bak
+jobs.json.bak
+error_log.txt
+add_to_file.py
+*.pyc
+__pycache__/

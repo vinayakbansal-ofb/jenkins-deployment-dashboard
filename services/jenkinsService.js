@@ -1,0 +1,233 @@
+/**
+ * Jenkins API Service — Environment-aware fetching
+ * ─────────────────────────────────────────────────
+ * For each job, scans the last N builds to find the latest deployment
+ * per staging environment (stg1, stg2, stg3 ...).
+ * No data stored locally — every call is a live Jenkins API fetch.
+ */
+
+const fetch = require('node-fetch');
+const config = require('../jobs.config');
+
+const getAuthHeader = () => {
+    if (!config.JENKINS_USER || !config.JENKINS_TOKEN) return {};
+    const creds = Buffer.from(`${config.JENKINS_USER}:${config.JENKINS_TOKEN}`).toString('base64');
+    return { Authorization: `Basic ${creds}` };
+};
+
+// Minimal tree to pull — keeps each request fast
+const BUILD_TREE = [
+    'number',
+    'result',
+    'timestamp',
+    'inProgress',
+    'url',
+    'actions[causes[userId,userName,shortDescription],parameters[name,value],buildsByBranchName,lastBuiltRevision[branch[name,SHA1]]]',
+].join(',');
+
+// ── Action Parsers ─────────────────────────────────────────────────────────
+
+const parseActions = (actions = []) => {
+    let branch = '';
+    let commit = '';
+    let deployedBy = '';
+    let environment = '';
+    const params = {};
+
+    for (const action of actions) {
+        const cls = action._class || '';
+
+        // Who triggered the build
+        if (cls.includes('CauseAction') || action.causes) {
+            const cause = (action.causes || [])[0] || {};
+            deployedBy = cause.userId || cause.userName || '';
+            if (!deployedBy && cause.shortDescription) {
+                // "Started by user John" → "John"
+                deployedBy = cause.shortDescription.replace(/^Started by (user )?/, '');
+            }
+        }
+
+        // Build parameters (ENV, BRANCH, etc.)
+        if (cls.includes('ParametersAction') || action.parameters) {
+            (action.parameters || []).forEach(p => { params[p.name] = p.value; });
+        }
+
+        // SCM / Git data
+        if (action.lastBuiltRevision || action.buildsByBranchName) {
+            const rev = action.lastBuiltRevision;
+            if (rev && Array.isArray(rev.branch) && rev.branch[0]) {
+                const b = rev.branch[0];
+                branch = (b.name || '').replace(/^refs\/(remotes\/[^/]+|heads)\//, '');
+                commit = (b.SHA1 || '').substring(0, 7);
+            }
+            if (!branch && action.buildsByBranchName) {
+                const k = Object.keys(action.buildsByBranchName)[0] || '';
+                branch = k.replace(/^refs\/(remotes\/[^/]+|heads)\//, '');
+            }
+        }
+    }
+
+    // Branch from params if SCM didn't show it
+    if (!branch) {
+        for (const name of config.BRANCH_PARAM_NAMES) {
+            if (params[name]) { branch = params[name]; break; }
+        }
+    }
+
+    // Environment from params — try all known param names
+    for (const name of config.ENV_PARAM_NAMES) {
+        if (params[name]) {
+            environment = normaliseEnv(params[name]);
+            break;
+        }
+    }
+
+    return { branch, commit, deployedBy, environment };
+};
+
+/**
+ * Normalise messy env strings → clean stg labels.
+ * "ofb_stg3" → "stg3"   "STG-5" → "stg5"   "3" → "stg3"   "uat1" → "uat1"
+ */
+const normaliseEnv = (raw = '') => {
+    const s = String(raw).toLowerCase().trim();
+    // patterns: ofb_stg3, stg3, stg-3, staging3, env3, uat1, uat-2
+    const m = s.match(/(?:ofb_?|staging?[-_]?)?(?:stg|env|uat)[-_]?(\d+)/);
+    if (m) {
+        if (s.includes('uat')) return `uat${m[1]}`;
+        return `stg${m[1]}`;
+    }
+    // bare number e.g. "3"
+    if (/^\d+$/.test(s)) return `stg${s}`;
+
+    // catch explicit "uat" without number
+    if (s.includes('uat')) return 'uat';
+
+    return s; // keep whatever it is
+};
+
+/**
+ * Normalise statuses across Jenkins naming
+ */
+const normaliseStatus = (build) => {
+    if (build.inProgress) return 'RUNNING';
+    const r = (build.result || '').toUpperCase();
+    if (r === 'SUCCESS') return 'SUCCESS';
+    if (r === 'FAILURE') return 'FAILED';
+    if (r === 'ABORTED') return 'ABORTED';
+    if (r === 'UNSTABLE') return 'UNSTABLE';
+    return 'UNKNOWN';
+};
+
+/**
+ * Convert a raw Jenkins build object + job name into our normalised shape.
+ */
+const normaliseBuild = (jobName, build) => {
+    const { branch, commit, deployedBy, environment } = parseActions(build.actions || []);
+    return {
+        job: jobName,
+        buildNumber: build.number,
+        branch: branch || '—',
+        commit: commit || '—',
+        status: normaliseStatus(build),
+        deployedBy: deployedBy || '—',
+        environment: environment || '—',
+        timestamp: build.timestamp ? new Date(build.timestamp).toISOString() : null,
+        url: build.url || `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/`,
+    };
+};
+
+// ── Fetch helpers ──────────────────────────────────────────────────────────
+
+const jenkinsGet = async (url) => {
+    const res = await fetch(url, {
+        headers: { Accept: 'application/json', ...getAuthHeader() },
+        timeout: 14000,
+    });
+    if (res.status === 404) return null;  // job exists but no builds, or wrong name
+    if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
+    return res.json();
+};
+
+/**
+ * For a single job: fetch the last SCAN_DEPTH builds and return the
+ * most-recent build per environment.
+ * Also returns a `_lastBuild` key = the absolute latest build (for jobs
+ * that don't use env params — so they still show up in "all" view).
+ */
+const SCAN_DEPTH = 60;
+
+const fetchJobEnvMap = async (jobName) => {
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/api/json` +
+        `?tree=builds[${encodeURIComponent(BUILD_TREE)}]{0,${SCAN_DEPTH}}`;
+    try {
+        const data = await jenkinsGet(url);
+        if (!data) return { jobName, envMap: {}, lastBuild: null, error: 'not_found' };
+        if (!data.builds?.length) return { jobName, envMap: {}, lastBuild: null, error: 'no_builds' };
+
+        const envMap = {};   // stg1 → normalised build object
+        let lastBuild = null; // the single latest build regardless of env
+
+        for (const build of data.builds) {
+            const nb = normaliseBuild(jobName, build);
+            if (!lastBuild) lastBuild = nb;          // first = latest
+
+            const key = nb.environment;
+            if (key && key !== '—' && !envMap[key]) {
+                envMap[key] = nb;                    // first seen = most recent for this env
+            }
+        }
+
+        return { jobName, envMap, lastBuild, error: null };
+    } catch (err) {
+        console.error(`[Jenkins] ${jobName}: ${err.message}`);
+        return {
+            jobName, envMap: {}, error: err.message,
+            lastBuild: {
+                job: jobName, buildNumber: null, branch: '—', commit: '—',
+                status: 'ERROR', deployedBy: '—', environment: '—',
+                timestamp: null, url: `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/`,
+                error: err.message,
+            },
+        };
+    }
+};
+
+/**
+ * Fetch all configured jobs in parallel.
+ * Returns a flat array of deployments — one record per (job × environment).
+ * If a job has no env params at all, one record is emitted for its latest build.
+ */
+const fetchAllDeployments = async () => {
+    const results = await Promise.all(config.JOBS.map(fetchJobEnvMap));
+
+    const flat = [];
+    for (const { envMap, lastBuild } of results) {
+        const envKeys = Object.keys(envMap);
+        if (envKeys.length > 0) {
+            envKeys.forEach(k => flat.push(envMap[k]));
+        } else if (lastBuild) {
+            flat.push(lastBuild);     // job shows up even without env params
+        }
+    }
+    return flat;
+};
+
+/**
+ * Return last HISTORY_DEPTH builds for a single job (history modal).
+ */
+const fetchBuildHistory = async (jobName) => {
+    const depth = config.HISTORY_DEPTH;
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/api/json` +
+        `?tree=builds[${encodeURIComponent(BUILD_TREE)}]{0,${depth}}`;
+    try {
+        const data = await jenkinsGet(url);
+        if (!data?.builds) return [];
+        return data.builds.map(b => normaliseBuild(jobName, b));
+    } catch (err) {
+        console.error(`[Jenkins] history ${jobName}: ${err.message}`);
+        return [];
+    }
+};
+
+module.exports = { fetchAllDeployments, fetchBuildHistory, fetchJobEnvMap };

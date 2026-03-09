@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jenkins Deployment Dashboard — OASYS</title>
+    <meta name="description" content="OASYS team Jenkins staging environment deployment tracker." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="./css/dashboard.css" />
+</head>
+
+<body>
+
+    <!-- ══ HEADER ══════════════════════════════════════════════════════════════ -->
+    <header class="header">
+        <div class="header-left">
+            <div class="jenkins-logo">
+                <!-- Jenkins butler icon (SVG inline) -->
+                <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="30" cy="30" r="30" fill="#D33832" />
+                    <ellipse cx="30" cy="24" rx="14" ry="16" fill="#F6F0E8" />
+                    <ellipse cx="23" cy="20" rx="3" ry="4" fill="#F6F0E8" />
+                    <ellipse cx="37" cy="20" rx="3" ry="4" fill="#F6F0E8" />
+                    <circle cx="26" cy="22" r="2.5" fill="#2d2d2d" />
+                    <circle cx="34" cy="22" r="2.5" fill="#2d2d2d" />
+                    <circle cx="27" cy="21.5" r="0.8" fill="white" />
+                    <circle cx="35" cy="21.5" r="0.8" fill="white" />
+                    <path d="M24 28 Q30 33 36 28" stroke="#2d2d2d" stroke-width="1.5" fill="none"
+                        stroke-linecap="round" />
+                    <rect x="20" y="14" width="6" height="3" rx="1.5" fill="#2d2d2d" />
+                    <rect x="34" y="14" width="6" height="3" rx="1.5" fill="#2d2d2d" />
+                    <ellipse cx="30" cy="40" rx="12" ry="6" fill="#2d5ba3" />
+                    <rect x="18" y="37" width="24" height="14" rx="4" fill="#2d5ba3" />
+                    <rect x="22" y="36" width="4" height="8" rx="2" fill="#1a3d7a" />
+                    <rect x="34" y="36" width="4" height="8" rx="2" fill="#1a3d7a" />
+                </svg>
+            </div>
+            <div class="header-title-block">
+                <h1 class="header-title">Jenkins Deployment Dashboard</h1>
+                <span class="header-team">OASYS</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="header-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search..." autocomplete="off" />
+            </div>
+            <select id="filterJob" class="header-select">
+                <option value="">Filter: All Jobs</option>
+            </select>
+            <div class="refresh-badge" id="refreshBadge">
+                <span class="rdot"></span>
+                <span id="refreshText">Live</span>
+            </div>
+            <button class="btn-theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
+                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <!-- Sun icon -->
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+            <button class="btn-refresh" id="refreshBtn" title="Refresh now">
+                <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- ══ ENVIRONMENT TABS ════════════════════════════════════════════════════ -->
+    <div class="env-tabs-bar" id="envTabsBar">
+        <div class="env-tabs" id="envTabs">
+            <!-- Dynamically generated -->
+        </div>
+    </div>
+
+    <!-- ══ MAIN CONTENT ════════════════════════════════════════════════════════ -->
+    <main class="main">
+
+        <!-- Loading -->
+        <div id="loadingState" class="loading-state">
+            <div class="spinner"></div>
+            <span>Fetching Jenkins builds…</span>
+        </div>
+
+        <!-- No data -->
+        <div id="emptyState" class="empty-state hidden">
+            <div class="empty-icon">🔧</div>
+            <h3>No deployments found</h3>
+            <p>Jenkins may not be returning environment parameters in build metadata,<br>or no builds have been run yet.
+            </p>
+            <p class="empty-hint">Check that your Jenkins jobs pass <code>ENV</code> or <code>Env</code> as a build
+                parameter.</p>
+        </div>
+
+        <!-- Jobs Table -->
+        <div id="tableWrap" class="table-wrap hidden">
+            <table class="dep-table">
+                <thead>
+                    <tr>
+                        <th class="col-job">Job</th>
+                        <th class="col-branch">Branch</th>
+                        <th class="col-build">Build</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-user">Deployed By</th>
+                        <th class="col-time">Time</th>
+                        <th class="col-actions"></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+
+            <div class="table-footer">
+                <div class="last-update">Last update: <span id="lastUpdateText">—</span></div>
+            </div>
+        </div>
+
+        <!-- No env jobs -->
+        <div id="noEnvJobs" class="hidden"
+            style="padding:24px 0;color:var(--text-muted);font-size:13px;text-align:center">
+            No jobs deployed to this environment yet.
+        </div>
+    </main>
+
+    <!-- ══ HISTORY MODAL ═══════════════════════════════════════════════════════ -->
+    <div id="historyModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle">Deployment History</h2>
+                    <span id="modalSubtitle" class="modal-subtitle"></span>
+                </div>
+                <button class="modal-close" id="modalClose">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <div class="loading-state">
+                    <div class="spinner"></div><span>Loading…</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ TOAST ═══════════════════════════════════════════════════════════════ -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="./js/app.js"></script>
+</body>
+
+</html>
