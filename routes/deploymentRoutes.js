@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { fetchAllDeployments, fetchBuildHistory } = require('../services/jenkinsService');
+const { checkServerStatus } = require('../services/serverStatusService');
 const config = require('../jobs.config');
 
 // GET /api/deployments
@@ -24,6 +25,19 @@ router.get('/history/:job', async (req, res) => {
         res.json({ job: req.params.job, history });
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch history' });
+    }
+});
+
+// GET /api/server-status
+// Checks health of configured backend services
+router.get('/server-status', async (req, res) => {
+    try {
+        const { env } = req.query;
+        const status = await checkServerStatus(env);
+        res.json(status);
+    } catch (err) {
+        console.error('GET /api/server-status error:', err);
+        res.status(500).json({ error: 'Failed to fetch server status' });
     }
 });
 

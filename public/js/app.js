@@ -26,6 +26,7 @@ let activeEnv = 'all';
 let countdown = REFRESH_SEC;
 let countdownTimer = null;
 let configuredJobs = [];   // from /api/jobs
+let serverStatus = [];     // from /api/server-status
 
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -209,6 +210,7 @@ window.selectEnv = (env) => {
     activeEnv = env;
     renderTabs();
     renderTable();
+    fetchServerStatus(true); // Refresh server status for new env
 };
 
 // ── Filter Population ──────────────────────────────────────────────────────
@@ -251,6 +253,86 @@ const fetchData = async (quiet = false) => {
         $('refreshText').textContent = 'Live';
         document.querySelector('.rdot').classList.remove('loading');
     }
+
+    // Also fetch server status
+    await fetchServerStatus(quiet);
+};
+
+const fetchServerStatus = async (quiet = false) => {
+    if (activeEnv === 'all') {
+        serverStatus = [];
+        renderServerStatus();
+        return;
+    }
+    try {
+        const res = await fetch(`/api/server-status?env=${encodeURIComponent(activeEnv)}`);
+        if (!res.ok) throw new Error(`Server: ${res.status}`);
+        serverStatus = await res.json();
+        renderServerStatus();
+    } catch (err) {
+        console.error('Fetch server status error:', err);
+        if (!quiet) showToast(`⚠️ Failed to load Server status for ${activeEnv}`, 'err');
+    }
+};
+
+const renderServerStatus = () => {
+    const section = $('serverStatusSection');
+    const grid = $('serverGrid');
+    const summary = $('statusSummary');
+
+    if (activeEnv === 'all') {
+        section.classList.add('hidden');
+        return;
+    }
+
+    section.classList.remove('hidden');
+
+    if (!serverStatus.length) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted);">No services configured for monitoring.</div>';
+        summary.textContent = 'No services';
+        return;
+    }
+
+    const upCount = serverStatus.filter(s => s.status === 'UP' || s.status === 'UP_SLOW').length;
+    summary.textContent = `${upCount} / ${serverStatus.length} services online`;
+
+    grid.innerHTML = serverStatus.map(s => {
+        let statusClass = 'status-down';
+        let statusIcon = '🔴';
+        let statusText = 'DOWN';
+
+        if (s.status === 'UP') {
+            statusClass = 'status-up';
+            statusIcon = '🟢';
+            statusText = 'UP';
+        } else if (s.status === 'UP_SLOW') {
+            statusClass = 'status-slow';
+            statusIcon = '🟡';
+            statusText = 'SLOW';
+        }
+
+        return `
+            <div class="server-card">
+                <div class="server-card-top">
+                    <div class="server-name-wrap">
+                        <span class="server-name">${esc(s.service)}</span>
+                        <span class="server-env">${esc(s.environment)}</span>
+                    </div>
+                    <div class="server-status-badge ${statusClass}">
+                        <div class="status-dot"></div>
+                        <span>${statusText}</span>
+                    </div>
+                </div>
+                <div class="server-card-details">
+                    <span class="server-response-time">⏱️ ${esc(s.responseTime)}</span>
+                    ${s.branch ? `<span class="server-branch" title="${esc(s.branch)}">🌿 ${esc(s.branch)}</span>` : ''}
+                </div>
+                <div class="server-card-footer">
+                    <span>Last checked: ${relTime(s.lastChecked)}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 };
 
 const startCountdown = () => {
