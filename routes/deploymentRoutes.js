@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const yaml = require('js-yaml');
-const { fetchAllDeployments, fetchBuildHistory, triggerJob, fetchReleaseStatus, fetchJobLogs, abortJob } = require('../services/jenkinsService');
+const { fetchAllDeployments, fetchBuildHistory, triggerJob, fetchReleaseStatus, fetchJobLogs, fetchBuild, abortJob } = require('../services/jenkinsService');
 const { checkServerStatus } = require('../services/serverStatusService');
 const config = require('../jobs.config');
 
@@ -25,6 +25,19 @@ router.get('/history/:job', async (req, res) => {
     res.json({ job: req.params.job, history });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+// GET /api/build/:job/:number
+router.get('/build/:job/:number', async (req, res) => {
+  try {
+    const { job, number } = req.params;
+    const build = await fetchBuild(job, number);
+    if (!build) return res.status(404).json({ error: 'Build not found' });
+    res.json(build);
+  } catch (err) {
+    console.error(`GET /api/build/${req.params.job}/${req.params.number} error:`, err);
+    res.status(500).json({ error: 'Failed to fetch build details' });
   }
 });
 
@@ -77,15 +90,16 @@ router.post('/trigger-release', async (req, res) => {
   }
 });
 
-// GET /api/release-logs
+// GET /api/release-logs?number=123&start=0
 router.get('/release-logs', async (req, res) => {
   try {
     const start = req.query.start || 0;
-    const logs = await fetchJobLogs('QA-Release-Deployment', start);
+    const number = req.query.number || null;
+    const logs = await fetchJobLogs('QA-Release-Deployment', start, number);
     res.json(logs);
   } catch (err) {
     console.error('GET /api/release-logs error:', err);
-    res.status(500).json({ error: 'Failed to fetch release logs' });
+    res.status(500).json({ error: 'Failed to fetch logs' });
   }
 });
 

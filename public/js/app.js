@@ -608,7 +608,7 @@ const updateLastReleaseStatus = (data) => {
     container.classList.remove('hidden');
     card.innerHTML = `
         <div class="lrc-header">
-            <span class="lrc-info">Build #${data.number}</span>
+            <span class="lrc-info">Build #${data.buildNumber || data.number}</span>
             <span class="lrc-result ${res}">${res}</span>
         </div>
         <div class="lrc-info">Completed ${time}</div>
@@ -650,16 +650,18 @@ const renderRMHistory = (history) => {
         <div class="history-group">
             <div class="history-group-label">${label}</div>
             ${builds.map(b => {
-                const res = (b.result || (b.building ? 'RUNNING' : 'UNKNOWN')).toLowerCase();
+                const res = (b.status || 'unknown').toLowerCase();
                 const icon = res === 'success' ? '✓' : res === 'running' ? '●' : '✕';
                 const time = new Date(b.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
                 return `
-                    <div class="history-item">
-                        <div class="hi-status-icon ${res}">${icon}</div>
-                        <div class="hi-number">#${b.number}</div>
-                        <div class="hi-time">${time}</div>
-                        <div class="hi-actions">${res.toUpperCase()}</div>
-                    </div>
+                    <a href="${b.url}" target="_blank" class="history-item-link">
+                        <div class="history-item">
+                            <div class="hi-status-icon ${res}">${icon}</div>
+                            <div class="hi-number">#${b.buildNumber}</div>
+                            <div class="hi-time">${time}</div>
+                            <div class="hi-actions">${res.toUpperCase()} ↗</div>
+                        </div>
+                    </a>
                 `;
             }).join('')}
         </div>

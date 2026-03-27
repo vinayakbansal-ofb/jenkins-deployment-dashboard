@@ -146,6 +146,9 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     
     if (deployType) jobParams.add(string(name: deployTypeParamName, value: deployType))
     if (domain) jobParams.add(string(name: domainParamName, value: domain))
+    if (jobName == 'Merge-FE') {
+        jobParams.add(string(name: 'SubDomain', value: 'OFB'))
+    }
     
     if (meta.has_libs_param) {
         def libsToDeploy = env.LIBS_TO_DEPLOY ?: params.LIBS_TO_DEPLOY ?: ""

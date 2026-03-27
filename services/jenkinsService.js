@@ -262,6 +262,21 @@ const triggerJob = async (jobName, params = {}) => {
 /**
  * Fetch status of the latest build for the master release job
  */
+/**
+ * Fetch a specific build by number
+ */
+const fetchBuild = async (jobName, buildNumber) => {
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/${buildNumber}/api/json?tree=${encodeURIComponent(BUILD_TREE)}`;
+    try {
+        const data = await jenkinsGet(url);
+        if (!data) return null;
+        return normaliseBuild(jobName, data);
+    } catch (err) {
+        console.error(`[Jenkins] build ${jobName} #${buildNumber}: ${err.message}`);
+        return null;
+    }
+};
+
 const fetchReleaseStatus = async () => {
     const jobName = 'QA-Release-Deployment';
     const status = await fetchJobEnvMap(jobName);
@@ -294,10 +309,11 @@ const fetchPipelineStages = async (jobName, buildNumber) => {
 };
 
 /**
- * Fetch console logs for the latest build of a job
+ * Fetch console logs for a job (latest or specific build number)
  */
-const fetchJobLogs = async (jobName, start = 0) => {
-    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/lastBuild/logText/progressiveText?start=${start}`;
+const fetchJobLogs = async (jobName, start = 0, buildNumber = null) => {
+    const buildPath = buildNumber ? buildNumber : 'lastBuild';
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/${buildPath}/logText/progressiveText?start=${start}`;
     try {
         const res = await fetch(url, {
             headers: getAuthHeader(),
@@ -341,5 +357,6 @@ module.exports = {
     triggerJob,
     fetchReleaseStatus,
     fetchJobLogs,
+    fetchBuild,
     abortJob,
 };

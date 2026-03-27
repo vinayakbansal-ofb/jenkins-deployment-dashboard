@@ -1807,3 +1807,99 @@ select {
   margin-left: auto;
   color: var(--text-muted);
 }
+
+/* Build Detail View */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 40px;
+  margin-bottom: 24px;
+}
+
+.btn-back {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.detail-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-title-box h3 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.5px;
+}
+
+.detail-body {
+  padding: 0 40px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.detail-section h4 {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.param-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.param-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.param-value {
+  font-size: 13px;
+  color: #e2e8f0;
+  word-break: break-all;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.history-item-link {
+  text-decoration: none;
+  display: block;
+  color: inherit;
+}
+
+.history-item-link:hover .hi-number {
+  color: var(--primary);
+}
+
+.hi-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
