@@ -1242,15 +1242,21 @@ select {
 
 .release-manager {
   margin-top: 24px;
-  background: rgba(30, 33, 46, 0.9);
-  backdrop-filter: blur(20px);
+  background: rgba(30, 33, 46, 0.98); /* Slightly more opaque for focus */
+  backdrop-filter: blur(25px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 32px; /* More padding for focus */
   margin-bottom: 30px;
-  animation: slideDown .4s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: var(--shadow-lg);
+  animation: slideInFocused .5s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   color: white;
+  min-height: 80vh; /* Make it feel like a dedicated screen */
+}
+
+@keyframes slideInFocused {
+  from { opacity: 0; transform: scale(0.98) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 @keyframes slideDown {

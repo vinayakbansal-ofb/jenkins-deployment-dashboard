@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const yaml = require('js-yaml');
 const { fetchAllDeployments, fetchBuildHistory, triggerJob, fetchReleaseStatus, fetchJobLogs, abortJob } = require('../services/jenkinsService');
 const { checkServerStatus } = require('../services/serverStatusService');
 const config = require('../jobs.config');
 
 // GET /api/deployments
 // Returns flat array — one record per (job × environment).
-// Frontend groups by environment to build the STG tabs.
 router.get('/deployments', async (req, res) => {
   try {
     const data = await fetchAllDeployments();
@@ -18,7 +19,6 @@ router.get('/deployments', async (req, res) => {
 });
 
 // GET /api/history/:job
-// Last N builds for a job — used by the history modal.
 router.get('/history/:job', async (req, res) => {
   try {
     const history = await fetchBuildHistory(req.params.job);
@@ -29,7 +29,6 @@ router.get('/history/:job', async (req, res) => {
 });
 
 // GET /api/server-status
-// Checks health of configured backend services
 router.get('/server-status', async (req, res) => {
   try {
     const { env } = req.query;
@@ -41,8 +40,17 @@ router.get('/server-status', async (req, res) => {
   }
 });
 
-// GET /api/jobs — configured job list (no Jenkins call)
-router.get('/jobs', (req, res) => res.json({ jobs: config.JOBS }));
+// GET /api/jobs — Full manifest from YAML
+router.get('/jobs', (req, res) => {
+  try {
+    const fileContents = fs.readFileSync('./jobs.yaml', 'utf8');
+    const data = yaml.load(fileContents);
+    res.json({ jobs: data.jobs || [] });
+  } catch (e) {
+    console.error('Error reading jobs.yaml:', e);
+    res.json({ jobs: config.JOBS.map(j => ({ name: j })) });
+  }
+});
 
 // POST /api/trigger-release
 router.post('/trigger-release', async (req, res) => {
@@ -55,9 +63,9 @@ router.post('/trigger-release', async (req, res) => {
 
     const params = {
       RELEASE_BRANCH: branch,
-      STG_ENV: env, // Matching Jenkins Parameter name
+      STG_ENV: env,
       JOBS_TO_RELEASE: (jobsToRelease || []).join(','),
-      LIBS_TO_DEPLOY: (libsToDeploy || []).join(','), // New library parameter
+      LIBS_TO_DEPLOY: (libsToDeploy || []).join(','),
       DRY_RUN: String(!!dryRun)
     };
 
@@ -69,7 +77,7 @@ router.post('/trigger-release', async (req, res) => {
   }
 });
 
-// GET /api/release-logs?start=0
+// GET /api/release-logs
 router.get('/release-logs', async (req, res) => {
   try {
     const start = req.query.start || 0;
@@ -103,7 +111,7 @@ router.get('/release-status', async (req, res) => {
   }
 });
 
-// GET /api/config — public safe config
+// GET /api/config
 router.get('/config', (req, res) => res.json({
   jenkinsBaseUrl: config.JENKINS_BASE_URL,
   jobs: config.JOBS,

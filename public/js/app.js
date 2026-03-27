@@ -471,17 +471,42 @@ const RM_MANIFEST = [
 
 const renderRMJobs = () => {
     const grid = $('rmJobGrid');
-    grid.innerHTML = RM_MANIFEST.map(cat => `
-        <div class="rm-cat-header">${cat.category}</div>
-        ${cat.jobs.map(job => `
-            <div class="rm-job-item" onclick="toggleRMJob(this)">
-                <input type="checkbox" data-job="${job}" />
-                <span>${job}</span>
-            </div>
-        `).join('')}
-    `).join('');
     
-    // Also render libraries once data is fetched or from manifest
+    // If we have full job objects from YAML, group them by type
+    if (configuredJobs.length > 0 && configuredJobs[0].type) {
+        const groups = {
+            'backend': 'Backend Services',
+            'frontend': 'Frontend Apps',
+            'orion': 'Orion Services'
+        };
+        
+        const manifest = Object.entries(groups).map(([type, label]) => ({
+            category: label,
+            jobs: configuredJobs.filter(j => j.type === type).map(j => j.name)
+        }));
+
+        grid.innerHTML = manifest.map(cat => `
+            <div class="rm-cat-header">${cat.category}</div>
+            ${cat.jobs.map(job => `
+                <div class="rm-job-item" onclick="toggleRMJob(this)">
+                    <input type="checkbox" data-job="${job}" />
+                    <span>${job}</span>
+                </div>
+            `).join('')}
+        `).join('');
+    } else {
+        // Fallback to static manifest
+        grid.innerHTML = RM_MANIFEST.map(cat => `
+            <div class="rm-cat-header">${cat.category}</div>
+            ${cat.jobs.map(job => `
+                <div class="rm-job-item" onclick="toggleRMJob(this)">
+                    <input type="checkbox" data-job="${job}" />
+                    <span>${job}</span>
+                </div>
+            `).join('')}
+        `).join('');
+    }
+    
     renderLibs();
 };
 
@@ -531,13 +556,18 @@ window.toggleRMJob = (el) => {
 
 const toggleReleaseManager = () => {
     const sec = $('releaseManagerSection');
+    const main = document.querySelector('.main-content');
     const isVisible = !sec.classList.contains('hidden');
     
     if (!isVisible) {
         sec.classList.remove('hidden');
+        if (main) main.classList.add('hidden'); // Hide dashboard content for focus
         renderRMJobs();
     } else {
         sec.classList.add('hidden');
+        if (main) main.classList.remove('hidden');
+        stopLogPolling();
+        clearInterval(progressInterval);
     }
 };
 
@@ -593,12 +623,11 @@ const startProgressPolling = () => {
             if (!data) return;
 
             // Jenkins build status
-            const buildStatus = data.result || 'RUNNING';
-            status.textContent = buildStatus === 'SUCCESS' ? 'Release Complete' : 'Deploying...';
+            const buildStatus = data.result || (data.building ? 'RUNNING' : 'QUEUED');
+            status.textContent = buildStatus === 'SUCCESS' ? 'Release Complete' : 
+                               buildStatus === 'RUNNING' ? 'Deploying Services...' : 
+                               buildStatus === 'QUEUED' ? 'Waiting in Queue...' : 'Processing...';
             
-            // Progress estimation based on finished jobs vs total requested
-            // In a real scenario, we'd parse the Jenkins stage API.
-            // For now, we use the logs to determine progress or just show activity.
             if (buildStatus === 'SUCCESS') {
                 bar.style.width = '100%';
                 percent.textContent = '100%';
@@ -651,7 +680,10 @@ const pollLogs = async () => {
         
         if (data.text) {
             const out = $('consoleOutput');
-            out.textContent += data.text;
+            // Clean ANSI escape sequences and weird Jenkins hidden links
+            const cleanText = data.text.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-nqrstuvwyzaceghjkml]/g, '')
+                                     .replace(/\[8mha:.*?\[0m/g, ''); // Strip Jenkins hidden links
+            out.textContent += cleanText;
             logStart = data.nextStart || logStart;
             if (scrollLock) out.scrollTop = out.scrollHeight;
         }

@@ -20,7 +20,6 @@
     <header class="header">
         <div class="header-left">
             <div class="jenkins-logo">
-                <!-- Jenkins butler icon (SVG inline) -->
                 <svg viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="30" cy="30" r="30" fill="#D33832" />
                     <ellipse cx="30" cy="24" rx="14" ry="16" fill="#F6F0E8" />
@@ -30,14 +29,11 @@
                     <circle cx="34" cy="22" r="2.5" fill="#2d2d2d" />
                     <circle cx="27" cy="21.5" r="0.8" fill="white" />
                     <circle cx="35" cy="21.5" r="0.8" fill="white" />
-                    <path d="M24 28 Q30 33 36 28" stroke="#2d2d2d" stroke-width="1.5" fill="none"
-                        stroke-linecap="round" />
+                    <path d="M24 28 Q30 33 36 28" stroke="#2d2d2d" stroke-width="1.5" fill="none" stroke-linecap="round" />
                     <rect x="20" y="14" width="6" height="3" rx="1.5" fill="#2d2d2d" />
                     <rect x="34" y="14" width="6" height="3" rx="1.5" fill="#2d2d2d" />
                     <ellipse cx="30" cy="40" rx="12" ry="6" fill="#2d5ba3" />
                     <rect x="18" y="37" width="24" height="14" rx="4" fill="#2d5ba3" />
-                    <rect x="22" y="36" width="4" height="8" rx="2" fill="#1a3d7a" />
-                    <rect x="34" y="36" width="4" height="8" rx="2" fill="#1a3d7a" />
                 </svg>
             </div>
             <div class="header-title-block">
@@ -61,18 +57,7 @@
                 <span id="refreshText">Live</span>
             </div>
             <button class="btn-theme-toggle" id="themeToggle" title="Toggle Light/Dark Mode">
-                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <!-- Sun icon -->
-                    <circle cx="12" cy="12" r="5"></circle>
-                    <line x1="12" y1="1" x2="12" y2="3"></line>
-                    <line x1="12" y1="21" x2="12" y2="23"></line>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                    <line x1="1" y1="12" x2="3" y2="12"></line>
-                    <line x1="21" y1="12" x2="23" y2="12"></line>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                </svg>
+                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
             </button>
             <button class="btn-refresh" id="refreshBtn" title="Refresh now">
                 <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -92,216 +77,174 @@
         </div>
     </header>
 
-    <!-- ══ ENVIRONMENT TABS ════════════════════════════════════════════════════ -->
-    <div class="env-tabs-bar" id="envTabsBar">
-        <div class="env-tabs" id="envTabs">
-            <!-- Dynamically generated -->
+    <!-- Dashboard Content (Hidden when RM is active) -->
+    <main class="main-content">
+        <div class="env-tabs-bar" id="envTabsBar">
+            <div class="env-tabs" id="envTabs"></div>
         </div>
-    </div>
 
-    <!-- ══ MAIN CONTENT ════════════════════════════════════════════════════════ -->
-    <main class="main">
-        <!-- ══ RELEASE MANAGER SECTION (Glassmorphism) ═══════════════════════════ -->
-        <section id="releaseManagerSection" class="release-manager hidden">
-            <div class="rm-header">
-                <div>
-                    <h2 class="rm-title">QA Release Automation</h2>
-                    <p class="rm-subtitle">Serial deployment for 28 services to staging/UAT</p>
-                </div>
-                <button class="btn-close-rm" id="btnCloseRM">✕</button>
-            </div>
-
-            <div class="rm-content" id="rmContentWrapper">
-                <!-- MANAGER VIEW: Configuration & Selection -->
-                <div id="rmManagerView" class="rm-view">
-                    <div class="rm-grid">
-                        <!-- Left: Config -->
-                        <div class="rm-config-panel">
-                            <div class="config-group">
-                                <label>Target Environment</label>
-                                <select id="rmEnvSelect" class="rm-select">
-                                    <option value="stg1">ofb_stg1</option>
-                                    <option value="stg2">ofb_stg2</option>
-                                    <option value="stg3">ofb_stg3</option>
-                                    <option value="stg4">ofb_stg4</option>
-                                    <option value="stg5">ofb_stg5</option>
-                                    <option value="stg6" selected>ofb_stg6</option>
-                                    <option value="stg7">ofb_stg7</option>
-                                    <option value="stg8">ofb_stg8</option>
-                                    <option value="stg9">ofb_stg9</option>
-                                    <option value="stg10">ofb_stg10</option>
-                                    <option value="uat1">ofb_uat1</option>
-                                    <option value="uat2">ofb_uat2</option>
-                                </select>
-                            </div>
-                            <div class="config-group">
-                                <label>Release Branch</label>
-                                <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. main" value="main" />
-                            </div>
-                            
-                            <!-- New: Library Selection Section -->
-                            <div class="config-group">
-                                <label>Library Selection (Deploy-Libs)</label>
-                                <div class="lib-selector-container">
-                                    <div class="lib-search-box">
-                                        <input type="text" id="libSearchInput" placeholder="Filter libraries..." />
-                                    </div>
-                                    <div class="lib-grid" id="libGrid">
-                                        <!-- Generates in JS -->
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="config-group">
-                                <label class="rm-checkbox-label">
-                                    <input type="checkbox" id="rmDryRun" checked />
-                                    <span>Dry Run (No actual triggers)</span>
-                                </label>
-                            </div>
-                            
-                            <div class="rm-action-box">
-                                <button id="btnTriggerRelease" class="btn-primary-glow">
-                                    🚀 Launch Release Pipeline
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Right: Job Selection -->
-                        <div class="rm-jobs-panel">
-                            <div class="panel-header">
-                                <h3>Service Selection</h3>
-                                <div class="panel-actions">
-                                    <button id="rmSelectAll">Select All</button>
-                                    <button id="rmSelectNone">Clear</button>
-                                </div>
-                            </div>
-                            <div class="rm-job-grid" id="rmJobGrid">
-                                <!-- Categorized items generated in JS -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MONITOR VIEW: Real-time Progress & Logs -->
-                <div id="rmMonitorView" class="rm-view hidden">
-                    <div class="monitor-header">
-                        <div class="overall-progress">
-                            <div class="progress-info">
-                                <span id="monitorStatus">Waitng for launch...</span>
-                                <span id="monitorPercent">0%</span>
-                            </div>
-                            <div class="progress-track"><div id="monitorBar" class="progress-fill"></div></div>
-                        </div>
-                        <div class="monitor-tabs">
-                            <button class="m-tab active" data-tab="status">Summary</button>
-                            <button class="m-tab" data-tab="console">Live Console</button>
-                        </div>
-                    </div>
-
-                    <div class="monitor-body">
-                        <!-- Summary Tab -->
-                        <div id="mTabStatus" class="m-tab-content active">
-                            <div class="monitor-job-list" id="monitorJobList">
-                                <!-- Jobs with micro-progress bars -->
-                            </div>
-                        </div>
-
-                        <!-- Console Tab -->
-                        <div id="mTabConsole" class="m-tab-content">
-                            <div class="console-wrapper">
-                                <div class="console-header">
-                                    <span>jenkins_console.log</span>
-                                    <button id="btnScrollLock" title="Toggle Auto-Scroll">Auto-scroll: ON</button>
-                                </div>
-                                <pre id="consoleOutput" class="console-output">Initializing stream...</pre>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="monitor-footer">
-                        <button id="btnAbortRelease" class="btn-abort">Cancel Release</button>
-                        <button id="btnReturnToManager" class="btn-secondary">Edit Selections</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <!-- ══ SERVER STATUS ════════════════════════════════════════════════════ -->
-        <section class="server-status-section" id="serverStatusSection">
+        <section id="serverStatusSection" class="server-status-section hidden">
             <div class="section-header">
-                <h2 class="section-title">Server Status</h2>
-                <div class="status-summary" id="statusSummary">
-                    Checking services...
-                </div>
+                <h3>System Health Monitor</h3>
+                <span id="statusSummary">Checking services...</span>
             </div>
-            <div class="server-grid" id="serverGrid">
-                <!-- Dynamically generated server cards -->
-            </div>
+            <div class="server-grid" id="serverGrid"></div>
         </section>
 
-        <!-- Loading -->
-        <div id="loadingState" class="loading-state">
-            <div class="spinner"></div>
-            <span>Fetching Jenkins builds…</span>
-        </div>
-
-        <!-- No data -->
-        <div id="emptyState" class="empty-state hidden">
-            <div class="empty-icon">🔧</div>
-            <h3>No deployments found</h3>
-            <p>Jenkins may not be returning environment parameters in build metadata,<br>or no builds have been run yet.
-            </p>
-            <p class="empty-hint">Check that your Jenkins jobs pass <code>ENV</code> or <code>Env</code> as a build
-                parameter.</p>
-        </div>
-
-        <!-- Jobs Table -->
-        <div id="tableWrap" class="table-wrap hidden">
-            <table class="dep-table">
+        <section class="table-wrap" id="tableWrap">
+            <table class="job-table">
                 <thead>
                     <tr>
-                        <th class="col-job">Job</th>
-                        <th class="col-branch">Branch</th>
-                        <th class="col-build">Build</th>
-                        <th class="col-status">Status</th>
-                        <th class="col-user">Deployed By</th>
-                        <th class="col-time">Time</th>
-                        <th class="col-actions"></th>
+                        <th>Job Name</th>
+                        <th>Branch</th>
+                        <th>Build</th>
+                        <th>Status</th>
+                        <th>Deployed By</th>
+                        <th>Time</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody"></tbody>
             </table>
+        </section>
 
-            <div class="table-footer">
-                <div class="last-update">Last update: <span id="lastUpdateText">—</span></div>
-            </div>
+        <div id="loadingState" class="loading-state hidden">
+            <div class="spinner"></div>
+            <span>Fetching Jenkins data...</span>
         </div>
 
-        <!-- No env jobs -->
-        <div id="noEnvJobs" class="hidden"
-            style="padding:24px 0;color:var(--text-muted);font-size:13px;text-align:center">
-            No jobs deployed to this environment yet.
+        <div id="emptyState" class="empty-state hidden">
+            <div class="empty-icon">📂</div>
+            <h3>No deployment data</h3>
+            <p>Check your Jenkins connection or sync jobs.</p>
+        </div>
+
+        <div id="noEnvJobs" class="no-env-jobs hidden">
+            <div class="empty-icon">📂</div>
+            <h3>No jobs in this environment</h3>
+            <p>Try selecting a different filter or environment.</p>
         </div>
     </main>
 
-    <!-- ══ HISTORY MODAL ═══════════════════════════════════════════════════════ -->
-    <div id="historyModal" class="modal-overlay hidden">
-        <div class="modal">
-            <div class="modal-header">
-                <div>
-                    <h2 id="modalTitle">Deployment History</h2>
-                    <span id="modalSubtitle" class="modal-subtitle"></span>
-                </div>
-                <button class="modal-close" id="modalClose">✕</button>
+    <!-- RELEASE MANAGER OVERLAY -->
+    <section id="releaseManagerSection" class="release-manager hidden">
+        <div class="rm-header">
+            <div>
+                <h2 class="rm-title">QA Release Automation</h2>
+                <p class="rm-subtitle">Serial deployment for 28 services to staging/UAT</p>
             </div>
-            <div class="modal-body" id="modalBody">
-                <div class="loading-state">
-                    <div class="spinner"></div><span>Loading…</span>
+            <button class="btn-close-rm" id="btnCloseRM">✕</button>
+        </div>
+
+        <div class="rm-content" id="rmContentWrapper">
+            <!-- MANAGER VIEW -->
+            <div id="rmManagerView" class="rm-view">
+                <div class="rm-grid">
+                    <div class="rm-config-panel">
+                        <div class="config-group">
+                            <label>Target Environment</label>
+                            <select id="rmEnvSelect" class="rm-select">
+                                <option value="stg6">ofb_stg6</option>
+                                <option value="stg1">ofb_stg1</option>
+                                <option value="stg2">ofb_stg2</option>
+                                <option value="stg3">ofb_stg3</option>
+                                <option value="stg4">ofb_stg4</option>
+                                <option value="stg5">ofb_stg5</option>
+                                <option value="stg7">ofb_stg7</option>
+                                <option value="stg8">ofb_stg8</option>
+                                <option value="stg9">ofb_stg9</option>
+                                <option value="stg10">ofb_stg10</option>
+                                <option value="uat1">ofb_uat1</option>
+                                <option value="uat2">ofb_uat2</option>
+                            </select>
+                        </div>
+                        <div class="config-group">
+                            <label>Release Branch</label>
+                            <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. main" value="main" />
+                        </div>
+                        <div class="config-group">
+                            <label>Library Selection (Deploy-Libs)</label>
+                            <div class="lib-selector-container">
+                                <div class="lib-search-box">
+                                    <input type="text" id="libSearchInput" placeholder="Filter libraries..." />
+                                </div>
+                                <div class="lib-grid" id="libGrid"></div>
+                            </div>
+                        </div>
+                        <div class="config-group">
+                            <label class="rm-checkbox-label">
+                                <input type="checkbox" id="rmDryRun" checked />
+                                <span>Dry Run (No actual triggers)</span>
+                            </label>
+                        </div>
+                        <div class="rm-action-box">
+                            <button id="btnTriggerRelease" class="btn-primary-glow">🚀 Launch Release Pipeline</button>
+                        </div>
+                    </div>
+                    <div class="rm-jobs-panel">
+                        <div class="panel-header">
+                            <h3>Service Selection</h3>
+                            <div class="panel-actions">
+                                <button id="rmSelectAll">Select All</button>
+                                <button id="rmSelectNone">Clear</button>
+                            </div>
+                        </div>
+                        <div class="rm-job-grid" id="rmJobGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MONITOR VIEW -->
+            <div id="rmMonitorView" class="rm-view hidden">
+                <div class="monitor-header">
+                    <div class="overall-progress">
+                        <div class="progress-info">
+                            <span id="monitorStatus">Waiting for launch...</span>
+                            <span id="monitorPercent">0%</span>
+                        </div>
+                        <div class="progress-track"><div id="monitorBar" class="progress-fill"></div></div>
+                    </div>
+                    <div class="monitor-tabs">
+                        <button class="m-tab active" data-tab="summary">Summary</button>
+                        <button class="m-tab" data-tab="console">Live Console</button>
+                    </div>
+                </div>
+                <div class="monitor-body">
+                    <div id="mTabSummary" class="m-tab-content active">
+                        <div class="monitor-job-list" id="monitorJobList"></div>
+                    </div>
+                    <div id="mTabConsole" class="m-tab-content">
+                        <div class="console-wrapper">
+                            <div class="console-header">
+                                <span>jenkins_console.log</span>
+                                <button id="btnScrollLock">Auto-scroll: ON</button>
+                            </div>
+                            <div class="console-output" id="consoleOutput"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="monitor-footer">
+                    <button class="btn-abort" id="btnAbortRelease">Cancel Release</button>
+                    <button class="btn-secondary" id="btnReturnToManager">Edit Selections</button>
                 </div>
             </div>
         </div>
+    </section>
+
+    <!-- MODAL -->
+    <div id="historyModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modalTitle">Build History</h2>
+                    <p id="modalSubtitle" class="modal-subtitle"></p>
+                </div>
+                <button class="modal-close" id="modalClose">✕</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
     </div>
 
-    <!-- ══ TOAST ═══════════════════════════════════════════════════════════════ -->
     <div id="toast" class="toast hidden"></div>
 
     <script src="./js/app.js"></script>
