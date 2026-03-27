@@ -8,7 +8,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'RELEASE_BRANCH', defaultValue: 'master', description: 'Branch for selected jobs')
+        string(name: 'RELEASE_BRANCH', defaultValue: 'main', description: 'Branch for selected jobs')
         choice(name: 'STG_ENV', choices: ['stg1', 'stg2', 'stg3', 'stg4', 'stg5', 'stg6', 'stg7', 'stg8', 'stg9', 'stg10', 'uat1', 'uat2'], description: 'Deploy target')
         text(name: 'JOBS_TO_RELEASE', defaultValue: '', description: 'Selected jobs (comma or newline separated)')
         text(name: 'LIBS_TO_DEPLOY', defaultValue: '', description: 'Optional libs to deploy')
@@ -23,26 +23,31 @@ pipeline {
     }
 
     stages {
-        stage('Initialize & Load Manifest') {
+        stage('Initialize & Debug') {
             steps {
                 script {
                     echo "--- Initializing QA Release Pipeline ---"
-                    // Reverting to params. for explicit parameter mapping
-                    def targetEnv = params.STG_ENV ?: "stg1"
-                    def releaseBranch = params.RELEASE_BRANCH ?: "master"
                     
-                    echo "Target Environment: ${targetEnv}"
-                    echo "Release Branch: ${releaseBranch}"
+                    // Robust parameter resolution: Check env first (passed by API), then params (defined in UI), then default
+                    def targetEnv = env.STG_ENV ?: params.STG_ENV ?: "stg1"
+                    def branchToUse = env.RELEASE_BRANCH ?: params.RELEASE_BRANCH ?: "main"
+                    def rawJobs = env.JOBS_TO_RELEASE ?: params.JOBS_TO_RELEASE ?: ""
+                    
+                    echo "DEBUG: env.STG_ENV = ${env.STG_ENV}"
+                    echo "DEBUG: params.STG_ENV = ${params.STG_ENV}"
+                    echo "DEBUG: env.JOBS_TO_RELEASE = ${env.JOBS_TO_RELEASE}"
+                    echo "DEBUG: params.JOBS_TO_RELEASE = ${params.JOBS_TO_RELEASE}"
+                    
+                    echo "FINAL Target Environment: ${targetEnv}"
+                    echo "FINAL Release Branch: ${branchToUse}"
                     
                     // Load jobs from YAML
                     def manifest = readYaml file: 'jobs.yaml'
                     dest_jobs = manifest.jobs
                     
                     // Parse jobs supports comma or newline
-                    def rawJobs = params.JOBS_TO_RELEASE ?: ""
                     release_jobs_list = rawJobs.split(/[,\n]/).collect { it.trim() }.findAll { it }
-                    
-                    echo "Jobs selected for release: ${release_jobs_list}"
+                    echo "FINAL Jobs selected for release: ${release_jobs_list}"
                     
                     results = [] 
                 }
@@ -52,10 +57,11 @@ pipeline {
         stage('Execute Deployments') {
             steps {
                 script {
+                    def branchToUse = env.RELEASE_BRANCH ?: params.RELEASE_BRANCH ?: "main"
+                    
                     dest_jobs.each { jobMeta ->
                         def jobDisplayName = jobMeta.name
                         def jenkinsJobName = jobMeta.jenkins_job
-                        def branchToUse = params.RELEASE_BRANCH ?: "master"
                         
                         if (!release_jobs_list.contains(jobDisplayName)) {
                             echo "Skipping ${jobDisplayName} (not selected)"
@@ -160,7 +166,7 @@ def generateAndSendReports() {
     def successCount = results.count { it.status == 'SUCCESS' }
     def failCount = results.size() - successCount
     def summary = "${successCount} / ${results.size()} runs succeeded | ${failCount} failed"
-    def releaseBranch = params.RELEASE_BRANCH ?: "master"
+    def releaseBranch = params.RELEASE_BRANCH ?: "main"
     def title = "QA Release Deploy — ${releaseBranch}"
 
     if (params.GCHAT_WEBHOOK_URL) {
