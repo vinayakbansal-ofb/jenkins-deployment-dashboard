@@ -111,65 +111,116 @@
                 <button class="btn-close-rm" id="btnCloseRM">✕</button>
             </div>
 
-            <div class="rm-grid">
-                <!-- Left: Config -->
-                <div class="rm-config-panel">
-                    <div class="config-group">
-                        <label>Target Environment</label>
-                        <select id="rmEnvSelect" class="rm-select">
-                            <option value="stg1">ofb_stg1</option>
-                            <option value="stg2">ofb_stg2</option>
-                            <option value="stg3">ofb_stg3</option>
-                            <option value="stg4">ofb_stg4</option>
-                            <option value="stg5">ofb_stg5</option>
-                            <option value="stg6" selected>ofb_stg6</option>
-                            <option value="stg7">ofb_stg7</option>
-                            <option value="stg8">ofb_stg8</option>
-                            <option value="stg9">ofb_stg9</option>
-                            <option value="stg10">ofb_stg10</option>
-                            <option value="uat1">ofb_uat1</option>
-                            <option value="uat2">ofb_uat2</option>
-                        </select>
-                    </div>
-                    <div class="config-group">
-                        <label>Release Branch</label>
-                        <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. release/2.4.0" value="release/2.4.0" />
-                    </div>
-                    <div class="config-group">
-                        <label class="rm-checkbox-label">
-                            <input type="checkbox" id="rmDryRun" checked />
-                            <span>Dry Run (No actual triggers)</span>
-                        </label>
-                    </div>
-                    
-                    <div class="rm-action-box">
-                        <button id="btnTriggerRelease" class="btn-primary-glow">
-                            🚀 Launch Release Pipeline
-                        </button>
-                        <p class="rm-hint">Serialized deployment of selected jobs in manifest order.</p>
-                    </div>
+            <div class="rm-content" id="rmContentWrapper">
+                <!-- MANAGER VIEW: Configuration & Selection -->
+                <div id="rmManagerView" class="rm-view">
+                    <div class="rm-grid">
+                        <!-- Left: Config -->
+                        <div class="rm-config-panel">
+                            <div class="config-group">
+                                <label>Target Environment</label>
+                                <select id="rmEnvSelect" class="rm-select">
+                                    <option value="stg1">ofb_stg1</option>
+                                    <option value="stg2">ofb_stg2</option>
+                                    <option value="stg3">ofb_stg3</option>
+                                    <option value="stg4">ofb_stg4</option>
+                                    <option value="stg5">ofb_stg5</option>
+                                    <option value="stg6" selected>ofb_stg6</option>
+                                    <option value="stg7">ofb_stg7</option>
+                                    <option value="stg8">ofb_stg8</option>
+                                    <option value="stg9">ofb_stg9</option>
+                                    <option value="stg10">ofb_stg10</option>
+                                    <option value="uat1">ofb_uat1</option>
+                                    <option value="uat2">ofb_uat2</option>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label>Release Branch</label>
+                                <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. main" value="main" />
+                            </div>
+                            
+                            <!-- New: Library Selection Section -->
+                            <div class="config-group">
+                                <label>Library Selection (Deploy-Libs)</label>
+                                <div class="lib-selector-container">
+                                    <div class="lib-search-box">
+                                        <input type="text" id="libSearchInput" placeholder="Filter libraries..." />
+                                    </div>
+                                    <div class="lib-grid" id="libGrid">
+                                        <!-- Generates in JS -->
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div id="releaseProgressBox" class="rm-progress-box hidden">
-                        <div class="progress-header">
-                            <span id="progressTitle">In Progress...</span>
-                            <span id="progressPercent">0%</span>
+                            <div class="config-group">
+                                <label class="rm-checkbox-label">
+                                    <input type="checkbox" id="rmDryRun" checked />
+                                    <span>Dry Run (No actual triggers)</span>
+                                </label>
+                            </div>
+                            
+                            <div class="rm-action-box">
+                                <button id="btnTriggerRelease" class="btn-primary-glow">
+                                    🚀 Launch Release Pipeline
+                                </button>
+                            </div>
                         </div>
-                        <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
-                        <div id="progressStep" class="progress-step">Initializing manifest...</div>
+
+                        <!-- Right: Job Selection -->
+                        <div class="rm-jobs-panel">
+                            <div class="panel-header">
+                                <h3>Service Selection</h3>
+                                <div class="panel-actions">
+                                    <button id="rmSelectAll">Select All</button>
+                                    <button id="rmSelectNone">Clear</button>
+                                </div>
+                            </div>
+                            <div class="rm-job-grid" id="rmJobGrid">
+                                <!-- Categorized items generated in JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Right: Job Selection -->
-                <div class="rm-jobs-panel">
-                    <div class="panel-header">
-                        <h3>Job Selection</h3>
-                        <div class="panel-actions">
-                            <button id="rmSelectAll">Select All</button>
-                            <button id="rmSelectNone">Clear</button>
+                <!-- MONITOR VIEW: Real-time Progress & Logs -->
+                <div id="rmMonitorView" class="rm-view hidden">
+                    <div class="monitor-header">
+                        <div class="overall-progress">
+                            <div class="progress-info">
+                                <span id="monitorStatus">Waitng for launch...</span>
+                                <span id="monitorPercent">0%</span>
+                            </div>
+                            <div class="progress-track"><div id="monitorBar" class="progress-fill"></div></div>
+                        </div>
+                        <div class="monitor-tabs">
+                            <button class="m-tab active" data-tab="status">Summary</button>
+                            <button class="m-tab" data-tab="console">Live Console</button>
                         </div>
                     </div>
-                    <div class="rm-job-grid" id="rmJobGrid">
-                        <!-- Categorized items generated in JS -->
+
+                    <div class="monitor-body">
+                        <!-- Summary Tab -->
+                        <div id="mTabStatus" class="m-tab-content active">
+                            <div class="monitor-job-list" id="monitorJobList">
+                                <!-- Jobs with micro-progress bars -->
+                            </div>
+                        </div>
+
+                        <!-- Console Tab -->
+                        <div id="mTabConsole" class="m-tab-content">
+                            <div class="console-wrapper">
+                                <div class="console-header">
+                                    <span>jenkins_console.log</span>
+                                    <button id="btnScrollLock" title="Toggle Auto-Scroll">Auto-scroll: ON</button>
+                                </div>
+                                <pre id="consoleOutput" class="console-output">Initializing stream...</pre>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="monitor-footer">
+                        <button id="btnAbortRelease" class="btn-abort">Cancel Release</button>
+                        <button id="btnReturnToManager" class="btn-secondary">Edit Selections</button>
                     </div>
                 </div>
             </div>

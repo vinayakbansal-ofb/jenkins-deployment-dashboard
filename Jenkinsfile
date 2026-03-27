@@ -12,7 +12,7 @@ pipeline {
         choice(name: 'STG_ENV', choices: ['stg1', 'stg2', 'stg3', 'stg4', 'stg5', 'stg6', 'stg7', 'stg8', 'stg9', 'stg10', 'uat1', 'uat2'], description: 'Deploy target')
         text(name: 'JOBS_TO_RELEASE', defaultValue: '', description: 'Selected jobs (comma or newline separated)')
         text(name: 'LIBS_TO_DEPLOY', defaultValue: '', description: 'Optional libs to deploy')
-        string(name: 'NOTIFY_EMAIL', defaultValue: 'qa-team@ofbusiness.in', description: 'Reporting emails')
+        string(name: 'NOTIFY_EMAIL', defaultValue: 'vinayak.bansal@ofbusiness.in', description: 'Reporting emails')
         string(name: 'GCHAT_WEBHOOK_URL', defaultValue: '', description: 'GChat Hook')
         booleanParam(name: 'DR_RUN', defaultValue: false, description: 'Dry Run mode') // Match dashboard key if needed
         booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Dry Run mode')
@@ -58,10 +58,23 @@ pipeline {
             steps {
                 script {
                     def branchToUse = env.RELEASE_BRANCH ?: params.RELEASE_BRANCH ?: "main"
+                    def libsToDeploy = env.LIBS_TO_DEPLOY ?: params.LIBS_TO_DEPLOY ?: ""
                     
+                    // --- STEP 1: Deploy Libraries First ---
+                    def libJobMeta = dest_jobs.find { it.name == 'Deploy-Libs' }
+                    if (libJobMeta && (release_jobs_list.contains('Deploy-Libs') || libsToDeploy)) {
+                        echo "--- Phase 1: Deploying Libraries ---"
+                        executeJob(libJobMeta.name, libJobMeta.jenkins_job, branchToUse, null, null, libJobMeta)
+                    }
+
+                    // --- STEP 2: Deploy Remaining Services ---
+                    echo "--- Phase 2: Deploying Services ---"
                     dest_jobs.each { jobMeta ->
                         def jobDisplayName = jobMeta.name
                         def jenkinsJobName = jobMeta.jenkins_job
+                        
+                        // Skip if already deployed in Step 1 or not selected
+                        if (jobDisplayName == 'Deploy-Libs') return
                         
                         if (!release_jobs_list.contains(jobDisplayName)) {
                             echo "Skipping ${jobDisplayName} (not selected)"
@@ -112,16 +125,21 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     def targetEnv = params.STG_ENV ?: "stg1"
     def dryExecution = (params.DRY_RUN == true || params.DR_RUN == true)
     
+    def branchParamName = (jobName == 'Deploy-Libs') ? 'branch_to_deploy' : 'BRANCH'
+    
     def jobParams = [
-        string(name: 'BRANCH', value: branch),
+        string(name: branchParamName, value: branch),
         string(name: 'Env', value: targetEnv)
     ]
     
     if (deployType) jobParams.add(string(name: 'DEPLOY_TYPE', value: deployType))
     if (domain) jobParams.add(string(name: 'DOMAIN', value: domain))
     
-    if (meta.has_libs_param && params.LIBS_TO_DEPLOY) {
-        jobParams.add(text(name: 'LIBS_TO_DEPLOY', value: params.LIBS_TO_DEPLOY))
+    if (meta.has_libs_param) {
+        def libsToDeploy = env.LIBS_TO_DEPLOY ?: params.LIBS_TO_DEPLOY ?: ""
+        if (libsToDeploy) {
+            jobParams.add(text(name: 'library_to_deploy', value: libsToDeploy))
+        }
     }
 
     echo ">>> Triggering ${jobName} | Branch: ${branch} | Env: ${targetEnv} | Type: ${deployType ?: 'N/A'}"

@@ -7,6 +7,8 @@
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const REFRESH_SEC = 30;
+const MONITOR_POLL_MS = 3000;
+const LOG_POLL_MS = 2000;
 const TAB_COLORS = [
     '#4a7cf7', '#f59e0b', '#22c55e', '#ef4444',
     '#a78bfa', '#06b6d4', '#f97316', '#ec4899',
@@ -25,8 +27,15 @@ let allDeployments = [];   // flat array from /api/deployments
 let activeEnv = 'all';
 let countdown = REFRESH_SEC;
 let countdownTimer = null;
-let configuredJobs = [];   // from /api/jobs
+let configuredJobs = [];   // from /api/jobs (includes libraries)
 let serverStatus = [];     // from /api/server-status
+
+// Phase 2 state
+let selectedLibs = new Set();
+let logPolling = false;
+let logStart = 0;
+let monitorPolling = false;
+let scrollLock = true;
 
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -471,6 +480,47 @@ const renderRMJobs = () => {
             </div>
         `).join('')}
     `).join('');
+    
+    // Also render libraries once data is fetched or from manifest
+    renderLibs();
+};
+
+const renderLibs = () => {
+    const libGrid = $('libGrid');
+    if (!libGrid) return;
+    
+    // Extract libraries from configuredJobs (Deploy-Libs entry)
+    const deployLibsJob = configuredJobs.find(j => j.name === 'Deploy-Libs');
+    const libs = deployLibsJob ? deployLibsJob.libraries : [];
+    
+    if (!libs.length) {
+        libGrid.innerHTML = '<div style="grid-column:1/-1;font-size:11px;color:#64748b;padding:10px">No libraries found.</div>';
+        return;
+    }
+
+    libGrid.innerHTML = libs.map(lib => `
+        <div class="lib-item ${selectedLibs.has(lib) ? 'selected' : ''}" onclick="toggleLib('${esc(lib)}', this)">
+            <span>${esc(lib)}</span>
+        </div>
+    `).join('');
+};
+
+window.toggleLib = (lib, el) => {
+    if (selectedLibs.has(lib)) {
+        selectedLibs.delete(lib);
+        el.classList.remove('selected');
+    } else {
+        selectedLibs.add(lib);
+        el.classList.add('selected');
+    }
+};
+
+const filterLibs = (q) => {
+    const items = document.querySelectorAll('.lib-item');
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(q.toLowerCase()) ? 'flex' : 'none';
+    });
 };
 
 window.toggleRMJob = (el) => {
@@ -496,8 +546,11 @@ const triggerRelease = async () => {
     const env = $('rmEnvSelect').value;
     const dryRun = $('rmDryRun').checked;
     const selectedJobs = Array.from(document.querySelectorAll('#rmJobGrid input:checked')).map(cb => cb.dataset.job);
+    const libsToDeploy = Array.from(selectedLibs);
 
-    if (!selectedJobs.length) return showToast('⚠️ Please select at least one job', 'err');
+    if (!selectedJobs.length && !libsToDeploy.length) 
+        return showToast('⚠️ Please select at least one job or library', 'err');
+    
     if (!branch) return showToast('⚠️ Please enter a release branch', 'err');
 
     const btn = $('btnTriggerRelease');
@@ -508,63 +561,154 @@ const triggerRelease = async () => {
         const res = await fetch('/api/trigger-release', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ branch, env, jobsToRelease: selectedJobs, dryRun })
+            body: JSON.stringify({ branch, env, jobsToRelease: selectedJobs, libsToDeploy, dryRun })
         });
         const data = await res.json();
         
         if (data.success) {
-            showToast(`🚀 Release triggered for ${selectedJobs.length} jobs!`);
+            showToast(`🚀 Release triggered!`);
+            switchRMView('monitor');
             startProgressPolling();
         } else {
             throw new Error(data.error || 'Trigger failed');
         }
     } catch (err) {
         showToast(`❌ Error: ${err.message}`, 'err');
-    } finally {
         btn.disabled = false;
         btn.textContent = '🚀 Launch Release Pipeline';
     }
 };
 
-let progressInterval = null;
 const startProgressPolling = () => {
-    const box = $('releaseProgressBox');
-    const bar = $('progressBar');
-    const step = $('progressStep');
-    box.classList.remove('hidden');
+    const bar = $('monitorBar');
+    const status = $('monitorStatus');
+    const percent = $('monitorPercent');
+    const jobList = $('monitorJobList');
     
     clearInterval(progressInterval);
     progressInterval = setInterval(async () => {
         try {
             const res = await fetch('/api/release-status');
             const data = await res.json();
-            
-            if (!data || data.status === 'ERROR') return;
+            if (!data) return;
 
-            // Simple mock progress logic for demonstration
-            // Real logic would parse Jenkins console or sub-job status
-            if (data.status === 'RUNNING') {
-                bar.style.width = '40%';
-                step.textContent = 'Executing serialized deployments...';
-            } else if (data.status === 'SUCCESS') {
+            // Jenkins build status
+            const buildStatus = data.result || 'RUNNING';
+            status.textContent = buildStatus === 'SUCCESS' ? 'Release Complete' : 'Deploying...';
+            
+            // Progress estimation based on finished jobs vs total requested
+            // In a real scenario, we'd parse the Jenkins stage API.
+            // For now, we use the logs to determine progress or just show activity.
+            if (buildStatus === 'SUCCESS') {
                 bar.style.width = '100%';
-                step.textContent = 'Release Completed Successfully!';
+                percent.textContent = '100%';
                 clearInterval(progressInterval);
-                setTimeout(() => box.classList.add('hidden'), 5000);
-            } else if (data.status === 'FAILED' || data.status === 'ABORTED') {
-                box.classList.add('hidden');
+                stopLogPolling();
+            } else if (buildStatus === 'FAILURE' || buildStatus === 'ABORTED') {
+                status.textContent = `Release ${buildStatus}`;
                 clearInterval(progressInterval);
+                stopLogPolling();
+            } else {
+                // Mock progress for UI feel
+                const currentWidth = parseFloat(bar.style.width) || 0;
+                if (currentWidth < 90) bar.style.width = (currentWidth + 2) + '%';
+                percent.textContent = Math.round(parseFloat(bar.style.width)) + '%';
             }
         } catch (e) {}
-    }, 5000);
+    }, MONITOR_POLL_MS);
+};
+
+const switchRMView = (view) => {
+    if (view === 'monitor') {
+        $('rmManagerView').classList.add('hidden');
+        $('rmMonitorView').classList.remove('hidden');
+        startLogPolling();
+        monitorPolling = true;
+    } else {
+        $('rmManagerView').classList.remove('hidden');
+        $('rmMonitorView').classList.add('hidden');
+        stopLogPolling();
+        monitorPolling = false;
+    }
+};
+
+const startLogPolling = () => {
+    logPolling = true;
+    logStart = 0;
+    $('consoleOutput').textContent = 'Connecting to Jenkins stream...';
+    pollLogs();
+};
+
+const stopLogPolling = () => {
+    logPolling = false;
+};
+
+const pollLogs = async () => {
+    if (!logPolling) return;
+    try {
+        const res = await fetch(`/api/release-logs?start=${logStart}`);
+        const data = await res.json();
+        
+        if (data.text) {
+            const out = $('consoleOutput');
+            out.textContent += data.text;
+            logStart = data.nextStart || logStart;
+            if (scrollLock) out.scrollTop = out.scrollHeight;
+        }
+        
+        if (logPolling) setTimeout(pollLogs, LOG_POLL_MS);
+    } catch (e) {
+        if (logPolling) setTimeout(pollLogs, 5000);
+    }
+};
+
+const abortRelease = async () => {
+    if (!confirm('Are you sure you want to stop the current release?')) return;
+    try {
+        const res = await fetch('/api/abort-release', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('🛑 Release Aborted');
+            switchRMView('manager');
+        }
+    } catch (e) {
+        showToast('❌ Failed to abort', 'err');
+    }
 };
 
 // ── Boot ───────────────────────────────────────────────────────────────────
 (async () => {
     initTheme();
+    
+    // Fetch jobs config first
+    try {
+        const res = await fetch('/api/jobs');
+        const data = await res.json();
+        configuredJobs = data.jobs || [];
+    } catch (e) {}
+
     $('themeToggle').addEventListener('click', toggleTheme);
     $('btnLaunchRelease').addEventListener('click', toggleReleaseManager);
     $('btnCloseRM').addEventListener('click', toggleReleaseManager);
+    
+    // Tab Switching
+    document.querySelectorAll('.m-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.m-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.m-tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            $(`mTab${tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)}`).classList.add('active');
+        });
+    });
+
+    $('libSearchInput').addEventListener('input', (e) => filterLibs(e.target.value));
+    $('btnReturnToManager').addEventListener('click', () => switchRMView('manager'));
+    $('btnAbortRelease').addEventListener('click', abortRelease);
+    $('btnScrollLock').addEventListener('click', () => {
+        scrollLock = !scrollLock;
+        $('btnScrollLock').textContent = `Auto-scroll: ${scrollLock ? 'ON' : 'OFF'}`;
+    });
+
     $('rmSelectAll').addEventListener('click', () => {
         document.querySelectorAll('#rmJobGrid .rm-job-item').forEach(el => {
             el.querySelector('input').checked = true;
@@ -576,6 +720,8 @@ const startProgressPolling = () => {
             el.querySelector('input').checked = false;
             el.classList.remove('selected');
         });
+        selectedLibs.clear();
+        renderLibs();
     });
     $('btnTriggerRelease').addEventListener('click', triggerRelease);
 

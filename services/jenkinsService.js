@@ -268,10 +268,53 @@ const fetchReleaseStatus = async () => {
     return status.lastBuild;
 };
 
+/**
+ * Fetch console logs for the latest build of a job
+ */
+const fetchJobLogs = async (jobName, start = 0) => {
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/lastBuild/logText/progressiveText?start=${start}`;
+    try {
+        const res = await fetch(url, {
+            headers: getAuthHeader(),
+            timeout: 10000,
+        });
+        
+        const more = res.headers.get('x-more-data') === 'true';
+        const nextStart = res.headers.get('x-text-size');
+        const text = await res.text();
+        
+        return { text, nextStart, more };
+    } catch (err) {
+        console.error(`[Jenkins] Fetch logs ${jobName} error:`, err.message);
+        throw err;
+    }
+};
+
+/**
+ * Stop/Abort a running build
+ */
+const abortJob = async (jobName) => {
+    // We target the current/last build
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/lastBuild/stop`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: getAuthHeader(),
+            timeout: 10000,
+        });
+        return { success: res.ok || res.status === 302 };
+    } catch (err) {
+        console.error(`[Jenkins] Abort ${jobName} error:`, err.message);
+        throw err;
+    }
+};
+
 module.exports = {
     fetchAllDeployments,
     fetchBuildHistory,
     fetchJobEnvMap,
     triggerJob,
     fetchReleaseStatus,
+    fetchJobLogs,
+    abortJob,
 };
