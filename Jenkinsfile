@@ -26,6 +26,7 @@ pipeline {
             steps {
                 script {
                     echo "--- Initializing QA Release Pipeline ---"
+                    echo "Target Environment: ${params.STG_ENV}"
                     echo "Release Branch: ${params.RELEASE_BRANCH}"
                     
                     // Load jobs from YAML (Now in root of the unified repo)
@@ -34,6 +35,8 @@ pipeline {
                     
                     // Parse jobs to release into a list for easy lookup (supports comma or newline)
                     release_jobs_list = params.JOBS_TO_RELEASE.split(/[,\n]/).collect { it.trim() }.findAll { it }
+                    
+                    echo "Jobs selected for release: ${release_jobs_list}"
                     
                     results = [] // List to store Result objects
                 }
@@ -47,12 +50,21 @@ pipeline {
                         def jobDisplayName = jobMeta.name
                         def jenkinsJobName = jobMeta.jenkins_job
                         
-                        // 1. Resolve Branch
-                        def branchToUse = "master"
-                        if (release_jobs_list.contains(jobDisplayName) && params.RELEASE_BRANCH) {
-                            branchToUse = params.RELEASE_BRANCH
+                        // ONLY trigger if the job is explicitly selected in the dashboard
+                        if (!release_jobs_list.contains(jobDisplayName)) {
+                            echo "Skipping ${jobDisplayName} (not selected)"
+                            results.add([
+                                name: jobDisplayName,
+                                branch: "-",
+                                type: "-",
+                                domain: "-",
+                                status: "SKIPPED",
+                                duration: "0s"
+                            ])
+                            return // Continue to next job
                         }
                         
+                        def branchToUse = params.RELEASE_BRANCH ?: "master"
                         echo "Processing Job: ${jobDisplayName} (Branch: ${branchToUse})"
 
                         // 2. Handle Multi-Run Logic based on fe_type
