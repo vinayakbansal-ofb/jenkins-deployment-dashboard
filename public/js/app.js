@@ -554,21 +554,58 @@ window.toggleRMJob = (el) => {
     el.classList.toggle('selected', cb.checked);
 };
 
-const toggleReleaseManager = () => {
+const toggleReleaseManager = async () => {
     const sec = $('releaseManagerSection');
-    const main = document.querySelector('.main-content');
+    const main = $('dashboardContainer');
     const isVisible = !sec.classList.contains('hidden');
     
     if (!isVisible) {
         sec.classList.remove('hidden');
         if (main) main.classList.add('hidden'); // Hide dashboard content for focus
-        renderRMJobs();
+        
+        // check if a release is already in progress
+        try {
+            const res = await fetch('/api/release-status');
+            const data = await res.json();
+            if (data && (data.building || data.result === 'RUNNING')) {
+                switchRMView('monitor');
+                startProgressPolling();
+            } else {
+                switchRMView('manager');
+                renderRMJobs();
+                // update "Last Status" card if build data exists
+                if (data && data.number) {
+                    updateLastReleaseStatus(data);
+                }
+            }
+        } catch (e) {
+            renderRMJobs();
+        }
     } else {
         sec.classList.add('hidden');
         if (main) main.classList.remove('hidden');
+        // If release NOT active, stop polling. If active, keep polling in background 
         stopLogPolling();
         clearInterval(progressInterval);
     }
+};
+
+const updateLastReleaseStatus = (data) => {
+    const card = $('lastReleaseCard');
+    const container = $('rmLastStatus');
+    if (!card || !container) return;
+
+    const res = (data.result || 'UNKNOWN').toLowerCase();
+    const time = data.timestamp ? relTime(data.timestamp) : 'unknown time';
+    
+    container.classList.remove('hidden');
+    card.innerHTML = `
+        <div class="lrc-header">
+            <span class="lrc-info">Build #${data.number}</span>
+            <span class="lrc-result ${res}">${res}</span>
+        </div>
+        <div class="lrc-info">Completed ${time}</div>
+    `;
 };
 
 const triggerRelease = async () => {
@@ -597,6 +634,9 @@ const triggerRelease = async () => {
         
         if (data.success) {
             showToast(`🚀 Release triggered!`);
+            // Reset log pointer for new build
+            logStart = 0; 
+            $('consoleOutput').textContent = 'Initialising...';
             switchRMView('monitor');
             startProgressPolling();
         } else {

@@ -77,54 +77,58 @@
         </div>
     </header>
 
-    <!-- Dashboard Content (Hidden when RM is active) -->
-    <main class="main-content">
+    <!-- UI Wrapper for toggling focus -->
+    <div id="dashboardContainer">
+        <!-- ══ ENVIRONMENT TABS ════════════════════════════════════════════════════ -->
         <div class="env-tabs-bar" id="envTabsBar">
             <div class="env-tabs" id="envTabs"></div>
         </div>
 
-        <section id="serverStatusSection" class="server-status-section hidden">
-            <div class="section-header">
-                <h3>System Health Monitor</h3>
-                <span id="statusSummary">Checking services...</span>
+        <!-- ══ MAIN CONTENT ════════════════════════════════════════════════════════ -->
+        <main class="main">
+            <section id="serverStatusSection" class="server-status-section hidden">
+                <div class="section-header">
+                    <h3>System Health Monitor</h3>
+                    <span id="statusSummary">Checking services...</span>
+                </div>
+                <div class="server-grid" id="serverGrid"></div>
+            </section>
+
+            <section class="table-wrap" id="tableWrap">
+                <table class="dep-table">
+                    <thead>
+                        <tr>
+                            <th class="col-job">Job Name</th>
+                            <th class="col-branch">Branch</th>
+                            <th class="col-build">Build</th>
+                            <th class="col-status">Status</th>
+                            <th class="col-user">Deployed By</th>
+                            <th class="col-time">Time</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </section>
+
+            <div id="loadingState" class="loading-state hidden">
+                <div class="spinner"></div>
+                <span>Fetching Jenkins data...</span>
             </div>
-            <div class="server-grid" id="serverGrid"></div>
-        </section>
 
-        <section class="table-wrap" id="tableWrap">
-            <table class="job-table">
-                <thead>
-                    <tr>
-                        <th>Job Name</th>
-                        <th>Branch</th>
-                        <th>Build</th>
-                        <th>Status</th>
-                        <th>Deployed By</th>
-                        <th>Time</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </section>
+            <div id="emptyState" class="empty-state hidden">
+                <div class="empty-icon">📂</div>
+                <h3>No deployment data</h3>
+                <p>Check your Jenkins connection or sync jobs.</p>
+            </div>
 
-        <div id="loadingState" class="loading-state hidden">
-            <div class="spinner"></div>
-            <span>Fetching Jenkins data...</span>
-        </div>
-
-        <div id="emptyState" class="empty-state hidden">
-            <div class="empty-icon">📂</div>
-            <h3>No deployment data</h3>
-            <p>Check your Jenkins connection or sync jobs.</p>
-        </div>
-
-        <div id="noEnvJobs" class="no-env-jobs hidden">
-            <div class="empty-icon">📂</div>
-            <h3>No jobs in this environment</h3>
-            <p>Try selecting a different filter or environment.</p>
-        </div>
-    </main>
+            <div id="noEnvJobs" class="no-env-jobs hidden">
+                <div class="empty-icon">📂</div>
+                <h3>No jobs in this environment</h3>
+                <p>Try selecting a different filter or environment.</p>
+            </div>
+        </main>
+    </div>
 
     <!-- RELEASE MANAGER OVERLAY -->
     <section id="releaseManagerSection" class="release-manager hidden">
@@ -158,6 +162,13 @@
                                 <option value="uat2">ofb_uat2</option>
                             </select>
                         </div>
+                        
+                        <!-- New: Recent Release Status Section -->
+                        <div id="rmLastStatus" class="config-group hidden">
+                            <label>Last Release Result</label>
+                            <div class="last-release-card" id="lastReleaseCard"></div>
+                        </div>
+
                         <div class="config-group">
                             <label>Release Branch</label>
                             <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. main" value="main" />

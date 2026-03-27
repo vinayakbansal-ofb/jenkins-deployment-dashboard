@@ -125,15 +125,19 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     def targetEnv = params.STG_ENV ?: "stg1"
     def dryExecution = (params.DRY_RUN == true || params.DR_RUN == true)
     
-    def branchParamName = (jobName == 'Deploy-Libs') ? 'branch_to_deploy' : 'BRANCH'
+    def branchParamName = (jobName == 'Deploy-Libs') ? 'branch_to_deploy' : 
+                         (jobName == 'Merge-FE') ? 'branchName' : 'BRANCH'
+    
+    def deployTypeParamName = (jobName == 'Merge-FE') ? 'Platform' : 'DEPLOY_TYPE'
+    def domainParamName     = (jobName == 'Merge-FE') ? 'Domain' : 'DOMAIN'
     
     def jobParams = [
         string(name: branchParamName, value: branch),
         string(name: 'Env', value: targetEnv)
     ]
     
-    if (deployType) jobParams.add(string(name: 'DEPLOY_TYPE', value: deployType))
-    if (domain) jobParams.add(string(name: 'DOMAIN', value: domain))
+    if (deployType) jobParams.add(string(name: deployTypeParamName, value: deployType))
+    if (domain) jobParams.add(string(name: domainParamName, value: domain))
     
     if (meta.has_libs_param) {
         def libsToDeploy = env.LIBS_TO_DEPLOY ?: params.LIBS_TO_DEPLOY ?: ""
@@ -142,7 +146,7 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
         }
     }
 
-    echo ">>> Triggering ${jobName} | Branch: ${branch} | Env: ${targetEnv} | Type: ${deployType ?: 'N/A'}"
+    echo ">>> Triggering ${jobName} | Branch: ${branch} | Env: ${targetEnv} | Type: ${deployType ?: 'N/A'} | Domain: ${domain ?: 'N/A'}"
     
     try {
         if (dryExecution) {

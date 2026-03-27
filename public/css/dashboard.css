@@ -1449,7 +1449,7 @@ select {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
-  max-height: 150px;
+  max-height: 280px; /* Increased for 71+ items */
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -1666,4 +1666,36 @@ select {
 
 .m-tab-content.active {
   display: block;
+}
+/* Recent Release Card */
+.last-release-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.lrc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lrc-result {
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.lrc-result.success { color: #22c55e; }
+.lrc-result.failure { color: #ef4444; }
+.lrc-result.aborted { color: #94a3b8; }
+
+.lrc-info {
+  font-size: 11px;
+  color: #94a3b8;
 }
