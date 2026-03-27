@@ -234,6 +234,7 @@ const fetchBuildHistory = async (jobName) => {
  * Trigger a parameterized build in Jenkins
  */
 const triggerJob = async (jobName, params = {}) => {
+    // Build query string for the URL - this is the standard way for buildWithParameters
     const query = Object.keys(params)
         .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
         .join('&');
@@ -243,6 +244,7 @@ const triggerJob = async (jobName, params = {}) => {
         const res = await fetch(url, {
             method: 'POST',
             headers: getAuthHeader(),
+            body: '', // Keep body empty to avoid 500 errors with query-based builds
             timeout: 10000,
         });
 
