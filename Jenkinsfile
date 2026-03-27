@@ -7,6 +7,17 @@ pipeline {
         ansiColor('xterm')
     }
 
+    parameters {
+        string(name: 'RELEASE_BRANCH', defaultValue: 'master', description: 'Branch for selected jobs')
+        choice(name: 'STG_ENV', choices: ['stg1', 'stg2', 'stg3', 'stg4', 'stg5', 'stg6', 'stg7', 'stg8', 'stg9', 'stg10', 'uat1', 'uat2'], description: 'Deploy target')
+        text(name: 'JOBS_TO_RELEASE', defaultValue: '', description: 'Selected jobs (comma or newline separated)')
+        text(name: 'LIBS_TO_DEPLOY', defaultValue: '', description: 'Optional libs to deploy')
+        string(name: 'NOTIFY_EMAIL', defaultValue: 'qa-team@ofbusiness.in', description: 'Reporting emails')
+        string(name: 'GCHAT_WEBHOOK_URL', defaultValue: '', description: 'GChat Hook')
+        booleanParam(name: 'DR_RUN', defaultValue: false, description: 'Dry Run mode') // Match dashboard key if needed
+        booleanParam(name: 'DRY_RUN', defaultValue: false, description: 'Dry Run mode')
+    }
+
     environment {
         DEPLOY_RESULTS = "" 
     }
@@ -16,9 +27,9 @@ pipeline {
             steps {
                 script {
                     echo "--- Initializing QA Release Pipeline ---"
-                    // Use env. instead of params. since we removed the explicit parameters block
-                    def targetEnv = env.STG_ENV ?: "stg1"
-                    def releaseBranch = env.RELEASE_BRANCH ?: "master"
+                    // Reverting to params. for explicit parameter mapping
+                    def targetEnv = params.STG_ENV ?: "stg1"
+                    def releaseBranch = params.RELEASE_BRANCH ?: "master"
                     
                     echo "Target Environment: ${targetEnv}"
                     echo "Release Branch: ${releaseBranch}"
@@ -27,8 +38,8 @@ pipeline {
                     def manifest = readYaml file: 'jobs.yaml'
                     dest_jobs = manifest.jobs
                     
-                    // Parse jobs to release supports comma or newline
-                    def rawJobs = env.JOBS_TO_RELEASE ?: ""
+                    // Parse jobs supports comma or newline
+                    def rawJobs = params.JOBS_TO_RELEASE ?: ""
                     release_jobs_list = rawJobs.split(/[,\n]/).collect { it.trim() }.findAll { it }
                     
                     echo "Jobs selected for release: ${release_jobs_list}"
@@ -44,9 +55,8 @@ pipeline {
                     dest_jobs.each { jobMeta ->
                         def jobDisplayName = jobMeta.name
                         def jenkinsJobName = jobMeta.jenkins_job
-                        def releaseBranch = env.RELEASE_BRANCH ?: "master"
+                        def branchToUse = params.RELEASE_BRANCH ?: "master"
                         
-                        // ONLY trigger if selected
                         if (!release_jobs_list.contains(jobDisplayName)) {
                             echo "Skipping ${jobDisplayName} (not selected)"
                             results.add([
@@ -60,17 +70,17 @@ pipeline {
                             return
                         }
                         
-                        echo "Processing Job: ${jobDisplayName} (Branch: ${releaseBranch})"
+                        echo "Processing Job: ${jobDisplayName} (Branch: ${branchToUse})"
 
                         if (jobMeta.fe_type == 'standard') {
-                            executeJob(jobDisplayName, jenkinsJobName, releaseBranch, 'website', null, jobMeta)
-                            executeJob(jobDisplayName, jenkinsJobName, releaseBranch, 'msite', null, jobMeta)
+                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'website', null, jobMeta)
+                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'msite', null, jobMeta)
                         } else if (jobMeta.fe_type == 'special') {
                             jobMeta.runs.each { run ->
-                                executeJob(jobDisplayName, jenkinsJobName, releaseBranch, run.deploy_type, run.domain, jobMeta)
+                                executeJob(jobDisplayName, jenkinsJobName, branchToUse, run.deploy_type, run.domain, jobMeta)
                             }
                         } else {
-                            executeJob(jobDisplayName, jenkinsJobName, releaseBranch, null, null, jobMeta)
+                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, null, null, jobMeta)
                         }
                     }
                 }
@@ -93,8 +103,8 @@ pipeline {
 def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     def startTime = System.currentTimeMillis()
     def status = "SUCCESS"
-    def targetEnv = env.STG_ENV ?: "stg1"
-    def dryRun = env.DRY_RUN == "true"
+    def targetEnv = params.STG_ENV ?: "stg1"
+    def dryExecution = (params.DRY_RUN == true || params.DR_RUN == true)
     
     def jobParams = [
         string(name: 'BRANCH', value: branch),
@@ -104,14 +114,14 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     if (deployType) jobParams.add(string(name: 'DEPLOY_TYPE', value: deployType))
     if (domain) jobParams.add(string(name: 'DOMAIN', value: domain))
     
-    if (meta.has_libs_param && env.LIBS_TO_DEPLOY) {
-        jobParams.add(text(name: 'LIBS_TO_DEPLOY', value: env.LIBS_TO_DEPLOY))
+    if (meta.has_libs_param && params.LIBS_TO_DEPLOY) {
+        jobParams.add(text(name: 'LIBS_TO_DEPLOY', value: params.LIBS_TO_DEPLOY))
     }
 
     echo ">>> Triggering ${jobName} | Branch: ${branch} | Env: ${targetEnv} | Type: ${deployType ?: 'N/A'}"
     
     try {
-        if (dryRun) {
+        if (dryExecution) {
             echo "[DRY RUN] Would trigger ${jobName} with params ${jobParams}"
             sleep 1
         } else {
@@ -150,10 +160,10 @@ def generateAndSendReports() {
     def successCount = results.count { it.status == 'SUCCESS' }
     def failCount = results.size() - successCount
     def summary = "${successCount} / ${results.size()} runs succeeded | ${failCount} failed"
-    def releaseBranch = env.RELEASE_BRANCH ?: "master"
+    def releaseBranch = params.RELEASE_BRANCH ?: "master"
     def title = "QA Release Deploy — ${releaseBranch}"
 
-    if (env.GCHAT_WEBHOOK_URL) {
+    if (params.GCHAT_WEBHOOK_URL) {
         def cardJson = [
             cards: [[
                 header: [ title: title, subtitle: summary ],
@@ -174,7 +184,7 @@ def generateAndSendReports() {
         }
     }
 
-    if (env.NOTIFY_EMAIL) {
+    if (params.NOTIFY_EMAIL) {
         def htmlBody = """
         <html>
         <body>
@@ -200,7 +210,7 @@ def generateAndSendReports() {
         """
         emailext body: htmlBody,
                  subject: "[QA Deploy] ${releaseBranch} — ${summary}",
-                 to: env.NOTIFY_EMAIL,
+                 to: params.NOTIFY_EMAIL,
                  mimeType: 'text/html'
     }
 }
