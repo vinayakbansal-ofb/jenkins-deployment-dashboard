@@ -1737,19 +1737,19 @@ select {
   border-bottom-color: var(--primary);
 }
 
-/* History Layout (Matching Screenshot) */
-.history-container {
+/* History Layout (Scoped to RM) */
+.rm-history-container {
   padding: 0 40px 40px;
 }
 
-.history-list {
+.rm-history-list {
   background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   overflow: hidden;
 }
 
-.history-group-label {
+.rm-history-group-label {
   padding: 16px 20px 8px;
   font-size: 12px;
   font-weight: 600;
@@ -1758,7 +1758,7 @@ select {
   letter-spacing: 0.5px;
 }
 
-.history-item {
+.rm-history-item {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -1768,11 +1768,11 @@ select {
   cursor: default;
 }
 
-.history-item:last-child {
+.rm-history-item:last-child {
   border-bottom: none;
 }
 
-.history-item:hover {
+.rm-history-item:hover {
   background: rgba(255, 255, 255, 0.01);
 }
 
@@ -1888,13 +1888,13 @@ select {
   font-family: 'JetBrains Mono', monospace;
 }
 
-.history-item-link {
+.rm-history-item-link {
   text-decoration: none;
   display: block;
   color: inherit;
 }
 
-.history-item-link:hover .hi-number {
+.rm-history-item-link:hover .hi-number {
   color: var(--primary);
 }
 

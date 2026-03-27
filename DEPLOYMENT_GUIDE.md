@@ -57,7 +57,7 @@ JENKINS_USER=your_user JENKINS_TOKEN=your_token pm2 start index.js --name "jenki
 
 ---
 
-## 3. How Others Can Access It
+## 4. How Others Can Access It
 Colleagues can access the dashboard using your computer's **Local IP Address**.
 
 ### Find Your IP (Mac/Linux)

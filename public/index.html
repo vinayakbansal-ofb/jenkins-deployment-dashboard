@@ -247,8 +247,8 @@
 
             <!-- HISTORY VIEW -->
             <div id="rmHistoryView" class="rm-view hidden">
-                <div class="history-container">
-                    <div class="history-list" id="rmHistoryList">
+                <div class="rm-history-container">
+                    <div class="rm-history-list" id="rmHistoryList">
                         <div class="loading-state">
                             <div class="spinner"></div>
                             <span>Loading build history...</span>
@@ -260,16 +260,18 @@
     </section>
 
     <!-- MODAL -->
-    <div id="historyModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h2 id="modalTitle">Build History</h2>
-                    <p id="modalSubtitle" class="modal-subtitle"></p>
+    <div id="historyModal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h2 id="modalTitle">Build History</h2>
+                        <p id="modalSubtitle" class="modal-subtitle"></p>
+                    </div>
+                    <button class="modal-close" id="modalClose">✕</button>
                 </div>
-                <button class="modal-close" id="modalClose">✕</button>
+                <div class="modal-body" id="modalBody"></div>
             </div>
-            <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 
