@@ -1,0 +1,157 @@
+# QA Release Deployment — Job Manifest
+# Jobs are deployed serially in the exact order listed below.
+# fe_type: none (default), standard (website + msite), special (Merge-FE 4-run sequence)
+
+jobs:
+  # --- Group 1: Backend / Services ---
+  - name: "Bheem-Compile-Deploy"
+    jenkins_job: "Bheem-Compile-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "Deploy-Libs"
+    jenkins_job: "Deploy-Libs"
+    type: "backend"
+    fe_type: "none"
+    has_libs_param: true
+
+  - name: "Informer-Compile"
+    jenkins_job: "Informer-Compile"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "Informer-Deploy"
+    jenkins_job: "Informer-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "Notification-Compile"
+    jenkins_job: "Notification-Compile"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "Notification-Deploy"
+    jenkins_job: "Notification-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-Compile"
+    jenkins_job: "OFB-Compile"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-Compile-Deploy"
+    jenkins_job: "OFB-Compile-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-Deploy"
+    jenkins_job: "OFB-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-FS-Compile"
+    jenkins_job: "OFB-FS-Compile"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-FS-Deploy"
+    jenkins_job: "OFB-FS-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-Scheduler-Compile"
+    jenkins_job: "OFB-Scheduler-Compile"
+    type: "backend"
+    fe_type: "none"
+
+  - name: "OFB-Scheduler-Deploy"
+    jenkins_job: "OFB-Scheduler-Deploy"
+    type: "backend"
+    fe_type: "none"
+
+  # --- Group 2: Frontend ---
+  - name: "BUYER-FE"
+    jenkins_job: "BUYER-FE"
+    type: "frontend"
+    fe_type: "standard"
+
+  - name: "Merge-FE"
+    jenkins_job: "Merge-FE"
+    type: "frontend"
+    fe_type: "special"
+    runs:
+      - deploy_type: "website"
+        domain: "admin"
+      - deploy_type: "msite"
+        domain: "admin"
+      - deploy_type: "website"
+        domain: "buyer"
+      - deploy_type: "msite"
+        domain: "buyer"
+
+  - name: "OASYS-FE"
+    jenkins_job: "OASYS-FE"
+    type: "frontend"
+    fe_type: "standard"
+
+  - name: "OASYS-TS"
+    jenkins_job: "OASYS-TS"
+    type: "frontend"
+    fe_type: "none"
+
+  - name: "OFB-Admin"
+    jenkins_job: "OfB-Admin"
+    type: "frontend"
+    fe_type: "none"
+
+  - name: "Orion-Admin"
+    jenkins_job: "Orion-Admin"
+    type: "frontend"
+    fe_type: "none"
+
+  - name: "Orion-FE"
+    jenkins_job: "Orion-FE"
+    type: "frontend"
+    fe_type: "standard"
+
+  - name: "Supplier-FE"
+    jenkins_job: "Supplier-FE"
+    type: "frontend"
+    fe_type: "standard"
+
+  # --- Group 3: Orion Services ---
+  - name: "Orion-Compile"
+    jenkins_job: "Orion-Compile"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-Compile-Deploy"
+    jenkins_job: "Orion-Compile-Deploy"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-Deploy"
+    jenkins_job: "Orion-Deploy"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-FS-Compile"
+    jenkins_job: "Orion-FS-Compile"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-FS-Deploy"
+    jenkins_job: "Orion-FS-Deploy"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-Scheduler-Compile"
+    jenkins_job: "Orion-Scheduler-Compile"
+    type: "orion"
+    fe_type: "none"
+
+  - name: "Orion-Scheduler-Deploy"
+    jenkins_job: "Orion-Scheduler-Deploy"
+    type: "orion"
+    fe_type: "none"

@@ -230,4 +230,46 @@ const fetchBuildHistory = async (jobName) => {
     }
 };
 
-module.exports = { fetchAllDeployments, fetchBuildHistory, fetchJobEnvMap };
+/**
+ * Trigger a parameterized build in Jenkins
+ */
+const triggerJob = async (jobName, params = {}) => {
+    const query = Object.keys(params)
+        .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+        .join('&');
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/buildWithParameters?${query}`;
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: getAuthHeader(),
+            timeout: 10000,
+        });
+
+        if (!res.ok && res.status !== 201) {
+            throw new Error(`Jenkins trigger failed: ${res.status} ${res.statusText}`);
+        }
+
+        return { success: true, job: jobName };
+    } catch (err) {
+        console.error(`[Jenkins] Trigger ${jobName} error:`, err.message);
+        throw err;
+    }
+};
+
+/**
+ * Fetch status of the latest build for the master release job
+ */
+const fetchReleaseStatus = async () => {
+    const jobName = 'QA-Release-Deployment';
+    const status = await fetchJobEnvMap(jobName);
+    return status.lastBuild;
+};
+
+module.exports = {
+    fetchAllDeployments,
+    fetchBuildHistory,
+    fetchJobEnvMap,
+    triggerJob,
+    fetchReleaseStatus,
+};

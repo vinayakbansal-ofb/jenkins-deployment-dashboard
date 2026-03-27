@@ -80,6 +80,15 @@
                     <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                 </svg>
             </button>
+            <div class="h-divider"></div>
+            <button class="btn-launch" id="btnLaunchRelease" title="Open Release Manager">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <span>Release Manager</span>
+            </button>
         </div>
     </header>
 
@@ -92,6 +101,79 @@
 
     <!-- ══ MAIN CONTENT ════════════════════════════════════════════════════════ -->
     <main class="main">
+        <!-- ══ RELEASE MANAGER SECTION (Glassmorphism) ═══════════════════════════ -->
+        <section id="releaseManagerSection" class="release-manager hidden">
+            <div class="rm-header">
+                <div>
+                    <h2 class="rm-title">QA Release Automation</h2>
+                    <p class="rm-subtitle">Serial deployment for 28 services to staging/UAT</p>
+                </div>
+                <button class="btn-close-rm" id="btnCloseRM">✕</button>
+            </div>
+
+            <div class="rm-grid">
+                <!-- Left: Config -->
+                <div class="rm-config-panel">
+                    <div class="config-group">
+                        <label>Target Environment</label>
+                        <select id="rmEnvSelect" class="rm-select">
+                            <option value="stg1">ofb_stg1</option>
+                            <option value="stg2">ofb_stg2</option>
+                            <option value="stg3">ofb_stg3</option>
+                            <option value="stg4">ofb_stg4</option>
+                            <option value="stg5">ofb_stg5</option>
+                            <option value="stg6" selected>ofb_stg6</option>
+                            <option value="stg7">ofb_stg7</option>
+                            <option value="stg8">ofb_stg8</option>
+                            <option value="stg9">ofb_stg9</option>
+                            <option value="stg10">ofb_stg10</option>
+                            <option value="uat1">ofb_uat1</option>
+                            <option value="uat2">ofb_uat2</option>
+                        </select>
+                    </div>
+                    <div class="config-group">
+                        <label>Release Branch</label>
+                        <input type="text" id="rmBranchInput" class="rm-input" placeholder="e.g. release/2.4.0" value="release/2.4.0" />
+                    </div>
+                    <div class="config-group">
+                        <label class="rm-checkbox-label">
+                            <input type="checkbox" id="rmDryRun" checked />
+                            <span>Dry Run (No actual triggers)</span>
+                        </label>
+                    </div>
+                    
+                    <div class="rm-action-box">
+                        <button id="btnTriggerRelease" class="btn-primary-glow">
+                            🚀 Launch Release Pipeline
+                        </button>
+                        <p class="rm-hint">Serialized deployment of selected jobs in manifest order.</p>
+                    </div>
+
+                    <div id="releaseProgressBox" class="rm-progress-box hidden">
+                        <div class="progress-header">
+                            <span id="progressTitle">In Progress...</span>
+                            <span id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-track"><div id="progressBar" class="progress-fill"></div></div>
+                        <div id="progressStep" class="progress-step">Initializing manifest...</div>
+                    </div>
+                </div>
+
+                <!-- Right: Job Selection -->
+                <div class="rm-jobs-panel">
+                    <div class="panel-header">
+                        <h3>Job Selection</h3>
+                        <div class="panel-actions">
+                            <button id="rmSelectAll">Select All</button>
+                            <button id="rmSelectNone">Clear</button>
+                        </div>
+                    </div>
+                    <div class="rm-job-grid" id="rmJobGrid">
+                        <!-- Categorized items generated in JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
         <!-- ══ SERVER STATUS ════════════════════════════════════════════════════ -->
         <section class="server-status-section" id="serverStatusSection">
             <div class="section-header">

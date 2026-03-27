@@ -444,10 +444,141 @@ const updateThemeIcon = (theme) => {
     }
 };
 
+// ── Release Manager Logic ────────────────────────────────────────────────
+const RM_MANIFEST = [
+    {
+        category: 'Backend Services',
+        jobs: ['Bheem-Compile-Deploy', 'Deploy-Libs', 'Informer-Compile', 'Informer-Deploy', 'Notification-Compile', 'Notification-Deploy', 'OFB-Compile', 'OFB-Compile-Deploy', 'OFB-Deploy', 'OFB-FS-Compile', 'OFB-FS-Deploy', 'OFB-Scheduler-Compile', 'OFB-Scheduler-Deploy']
+    },
+    {
+        category: 'Frontend Apps',
+        jobs: ['BUYER-FE', 'Merge-FE', 'OASYS-FE', 'OASYS-TS', 'OFB-Admin', 'Orion-Admin', 'Orion-FE', 'Supplier-FE']
+    },
+    {
+        category: 'Orion Services',
+        jobs: ['Orion-Compile', 'Orion-Compile-Deploy', 'Orion-Deploy', 'Orion-FS-Compile', 'Orion-FS-Deploy', 'Orion-Scheduler-Compile', 'Orion-Scheduler-Deploy']
+    }
+];
+
+const renderRMJobs = () => {
+    const grid = $('rmJobGrid');
+    grid.innerHTML = RM_MANIFEST.map(cat => `
+        <div class="rm-cat-header">${cat.category}</div>
+        ${cat.jobs.map(job => `
+            <div class="rm-job-item" onclick="toggleRMJob(this)">
+                <input type="checkbox" data-job="${job}" />
+                <span>${job}</span>
+            </div>
+        `).join('')}
+    `).join('');
+};
+
+window.toggleRMJob = (el) => {
+    const cb = el.querySelector('input');
+    cb.checked = !cb.checked;
+    el.classList.toggle('selected', cb.checked);
+};
+
+const toggleReleaseManager = () => {
+    const sec = $('releaseManagerSection');
+    const isVisible = !sec.classList.contains('hidden');
+    
+    if (!isVisible) {
+        sec.classList.remove('hidden');
+        renderRMJobs();
+    } else {
+        sec.classList.add('hidden');
+    }
+};
+
+const triggerRelease = async () => {
+    const branch = $('rmBranchInput').value.trim();
+    const env = $('rmEnvSelect').value;
+    const dryRun = $('rmDryRun').checked;
+    const selectedJobs = Array.from(document.querySelectorAll('#rmJobGrid input:checked')).map(cb => cb.dataset.job);
+
+    if (!selectedJobs.length) return showToast('⚠️ Please select at least one job', 'err');
+    if (!branch) return showToast('⚠️ Please enter a release branch', 'err');
+
+    const btn = $('btnTriggerRelease');
+    btn.disabled = true;
+    btn.textContent = '⚡ Triggering...';
+
+    try {
+        const res = await fetch('/api/trigger-release', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ branch, env, jobsToRelease: selectedJobs, dryRun })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            showToast(`🚀 Release triggered for ${selectedJobs.length} jobs!`);
+            startProgressPolling();
+        } else {
+            throw new Error(data.error || 'Trigger failed');
+        }
+    } catch (err) {
+        showToast(`❌ Error: ${err.message}`, 'err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Launch Release Pipeline';
+    }
+};
+
+let progressInterval = null;
+const startProgressPolling = () => {
+    const box = $('releaseProgressBox');
+    const bar = $('progressBar');
+    const step = $('progressStep');
+    box.classList.remove('hidden');
+    
+    clearInterval(progressInterval);
+    progressInterval = setInterval(async () => {
+        try {
+            const res = await fetch('/api/release-status');
+            const data = await res.json();
+            
+            if (!data || data.status === 'ERROR') return;
+
+            // Simple mock progress logic for demonstration
+            // Real logic would parse Jenkins console or sub-job status
+            if (data.status === 'RUNNING') {
+                bar.style.width = '40%';
+                step.textContent = 'Executing serialized deployments...';
+            } else if (data.status === 'SUCCESS') {
+                bar.style.width = '100%';
+                step.textContent = 'Release Completed Successfully!';
+                clearInterval(progressInterval);
+                setTimeout(() => box.classList.add('hidden'), 5000);
+            } else if (data.status === 'FAILED' || data.status === 'ABORTED') {
+                box.classList.add('hidden');
+                clearInterval(progressInterval);
+            }
+        } catch (e) {}
+    }, 5000);
+};
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 (async () => {
     initTheme();
     $('themeToggle').addEventListener('click', toggleTheme);
+    $('btnLaunchRelease').addEventListener('click', toggleReleaseManager);
+    $('btnCloseRM').addEventListener('click', toggleReleaseManager);
+    $('rmSelectAll').addEventListener('click', () => {
+        document.querySelectorAll('#rmJobGrid .rm-job-item').forEach(el => {
+            el.querySelector('input').checked = true;
+            el.classList.add('selected');
+        });
+    });
+    $('rmSelectNone').addEventListener('click', () => {
+        document.querySelectorAll('#rmJobGrid .rm-job-item').forEach(el => {
+            el.querySelector('input').checked = false;
+            el.classList.remove('selected');
+        });
+    });
+    $('btnTriggerRelease').addEventListener('click', triggerRelease);
+
     await fetchData();
     startCountdown();
 })();
