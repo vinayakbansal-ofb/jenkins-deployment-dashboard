@@ -561,22 +561,29 @@ const toggleReleaseManager = async () => {
     
     if (!isVisible) {
         sec.classList.remove('hidden');
-        if (main) main.classList.add('hidden'); // Hide dashboard content for focus
+        if (main) main.classList.add('hidden'); 
         
+        // Reset navigation to Configuration tab
+        document.querySelectorAll('.rm-nav-btn').forEach(b => b.classList.remove('active'));
+        const configBtn = document.querySelector('[data-view="rmManagerView"]');
+        if (configBtn) configBtn.classList.add('active');
+
         // check if a release is already in progress
         try {
             const res = await fetch('/api/release-status');
             const data = await res.json();
             if (data && (data.building || data.result === 'RUNNING')) {
+                // hide nav in monitor mode to keep it focused
+                const nav = document.querySelector('.rm-nav');
+                if (nav) nav.style.display = 'none';
                 switchRMView('monitor');
                 startProgressPolling();
             } else {
+                const nav = document.querySelector('.rm-nav');
+                if (nav) nav.style.display = 'flex';
                 switchRMView('manager');
                 renderRMJobs();
-                // update "Last Status" card if build data exists
-                if (data && data.number) {
-                    updateLastReleaseStatus(data);
-                }
+                if (data && data.number) updateLastReleaseStatus(data);
             }
         } catch (e) {
             renderRMJobs();
@@ -606,6 +613,57 @@ const updateLastReleaseStatus = (data) => {
         </div>
         <div class="lrc-info">Completed ${time}</div>
     `;
+};
+
+const loadRMHistory = async () => {
+    const list = $('rmHistoryList');
+    list.innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Fetching history...</span></div>`;
+    
+    try {
+        const res = await fetch('/api/history/QA-Release-Deployment');
+        const data = await res.json();
+        renderRMHistory(data.history || []);
+    } catch (e) {
+        list.innerHTML = `<div class="error-state">Failed to load history</div>`;
+    }
+};
+
+const renderRMHistory = (history) => {
+    const list = $('rmHistoryList');
+    if (!history.length) {
+        list.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);">No build history found.</div>`;
+        return;
+    }
+
+    // Group by day
+    const groups = {};
+    history.forEach(b => {
+        const d = new Date(b.timestamp);
+        const day = d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+        const today = new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+        const label = day === today ? 'Today' : day;
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(b);
+    });
+
+    list.innerHTML = Object.entries(groups).map(([label, builds]) => `
+        <div class="history-group">
+            <div class="history-group-label">${label}</div>
+            ${builds.map(b => {
+                const res = (b.result || (b.building ? 'RUNNING' : 'UNKNOWN')).toLowerCase();
+                const icon = res === 'success' ? '✓' : res === 'running' ? '●' : '✕';
+                const time = new Date(b.timestamp).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+                return `
+                    <div class="history-item">
+                        <div class="hi-status-icon ${res}">${icon}</div>
+                        <div class="hi-number">#${b.number}</div>
+                        <div class="hi-time">${time}</div>
+                        <div class="hi-actions">${res.toUpperCase()}</div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `).join('');
 };
 
 const triggerRelease = async () => {
@@ -655,6 +713,12 @@ const startProgressPolling = () => {
     const percent = $('monitorPercent');
     const jobList = $('monitorJobList');
     
+    // reset bar for new build
+    if (!bar.style.width || bar.style.width === '0%' || bar.style.width === '100%') {
+        bar.style.width = '2%';
+        percent.textContent = '2%';
+    }
+
     clearInterval(progressInterval);
     progressInterval = setInterval(async () => {
         try {
@@ -668,23 +732,69 @@ const startProgressPolling = () => {
                                buildStatus === 'RUNNING' ? 'Deploying Services...' : 
                                buildStatus === 'QUEUED' ? 'Waiting in Queue...' : 'Processing...';
             
+            // Render sub-job stages if present
+            if (data.stages && data.stages.length > 0) {
+                renderMonitorStages(data.stages);
+                
+                // Calculate real progress based on stages if building
+                if (data.building) {
+                    const completed = data.stages.filter(s => s.status === 'SUCCESS').length;
+                    const total = data.stages.length;
+                    const calculatedPercent = Math.max(2, Math.round((completed / total) * 100));
+                    bar.style.width = calculatedPercent + '%';
+                    percent.textContent = calculatedPercent + '%';
+                }
+            } else {
+                // FALLBACK increment for UI feel if no stages yet
+                const currentWidth = parseFloat(bar.style.width) || 0;
+                if (currentWidth < 90) {
+                    const inc = buildStatus === 'RUNNING' ? 1 : 0.1;
+                    bar.style.width = (currentWidth + inc) + '%';
+                    percent.textContent = Math.round(parseFloat(bar.style.width)) + '%';
+                }
+            }
+
             if (buildStatus === 'SUCCESS') {
                 bar.style.width = '100%';
                 percent.textContent = '100%';
                 clearInterval(progressInterval);
                 stopLogPolling();
             } else if (buildStatus === 'FAILURE' || buildStatus === 'ABORTED') {
-                status.textContent = `Release ${buildStatus}`;
+                status.textContent = `Release ${statusLabel(buildStatus)}`;
                 clearInterval(progressInterval);
                 stopLogPolling();
-            } else {
-                // Mock progress for UI feel
-                const currentWidth = parseFloat(bar.style.width) || 0;
-                if (currentWidth < 90) bar.style.width = (currentWidth + 2) + '%';
-                percent.textContent = Math.round(parseFloat(bar.style.width)) + '%';
             }
-        } catch (e) {}
+        } catch (e) {
+            console.error('Polling error:', e);
+        }
     }, MONITOR_POLL_MS);
+};
+
+const renderMonitorStages = (stages) => {
+    const list = $('monitorJobList');
+    if (!list) return;
+
+    // Filter out internal stages like "Initialize" and "Final Reporting" if you want
+    const serviceStages = stages.filter(s => s.name.startsWith('Deploy:'));
+    
+    if (serviceStages.length === 0) {
+        list.innerHTML = `<div style="color:var(--text-muted);padding:20px;text-align:center;">Initialising stages...</div>`;
+        return;
+    }
+
+    list.innerHTML = serviceStages.map(s => {
+        const name = s.name.replace('Deploy:', '').trim();
+        const stat = s.status || 'PENDING';
+        return `
+            <div class="m-job-row">
+                <div class="m-job-name">${esc(name)}</div>
+                <div class="progress-track" style="height:4px;margin:0 10px;">
+                    <div class="progress-fill" style="width:${stat === 'SUCCESS' ? '100%' : stat === 'IN_PROGRESS' ? '50%' : '0%'}"></div>
+                </div>
+                <div class="m-job-status sp-${esc(stat.toLowerCase())}">${esc(stat)}</div>
+            </div>
+        `;
+    }).join('');
 };
 
 const switchRMView = (view) => {
@@ -796,6 +906,21 @@ const abortRelease = async () => {
         renderLibs();
     });
     $('btnTriggerRelease').addEventListener('click', triggerRelease);
+    
+    // RM Navigation
+    document.querySelectorAll('.rm-nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const view = btn.dataset.view;
+            document.querySelectorAll('.rm-nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.rm-view').forEach(v => v.classList.add('hidden'));
+            
+            btn.classList.add('active');
+            $(view).classList.remove('hidden');
+            
+            if (view === 'rmHistoryView') loadRMHistory();
+            if (view === 'rmManagerView') renderRMJobs();
+        });
+    });
 
     await fetchData();
     startCountdown();

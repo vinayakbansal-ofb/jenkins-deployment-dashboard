@@ -1699,3 +1699,111 @@ select {
   font-size: 11px;
   color: #94a3b8;
 }
+
+/* Monitor View Statuses */
+.m-job-status.sp-success { color: #22c55e; }
+.m-job-status.sp-in_progress { color: #f59e0b; animation: pulse 2s infinite; }
+.m-job-status.sp-failed { color: #ef4444; }
+.m-job-status.sp-pending { color: #94a3b8; }
+.m-job-status.sp-aborted { color: #94a3b8; }
+
+/* RM Navigation Tabs */
+.rm-nav {
+  display: flex;
+  gap: 20px;
+  padding: 0 40px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rm-nav-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rm-nav-btn:hover {
+  color: #fff;
+}
+
+.rm-nav-btn.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* History Layout (Matching Screenshot) */
+.history-container {
+  padding: 0 40px 40px;
+}
+
+.history-list {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.history-group-label {
+  padding: 16px 20px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background 0.2s;
+  cursor: default;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item:hover {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.hi-status-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.hi-status-icon.success { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.hi-status-icon.failure { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.hi-status-icon.aborted { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+.hi-status-icon.running { background: rgba(245, 158, 11, 0.2); color: #f59e0b; animation: pulse 2s infinite; }
+
+.hi-number {
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: #f1f5f9;
+  font-size: 14px;
+}
+
+.hi-time {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.hi-actions {
+  margin-left: auto;
+  color: var(--text-muted);
+}

@@ -92,14 +92,22 @@ pipeline {
                         echo "Processing Job: ${jobDisplayName} (Branch: ${branchToUse})"
 
                         if (jobMeta.fe_type == 'standard') {
-                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'website', null, jobMeta)
-                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'msite', null, jobMeta)
+                            stage("Deploy: ${jobDisplayName} (Website)") {
+                                executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'website', null, jobMeta)
+                            }
+                            stage("Deploy: ${jobDisplayName} (MSite)") {
+                                executeJob(jobDisplayName, jenkinsJobName, branchToUse, 'msite', null, jobMeta)
+                            }
                         } else if (jobMeta.fe_type == 'special') {
                             jobMeta.runs.each { run ->
-                                executeJob(jobDisplayName, jenkinsJobName, branchToUse, run.deploy_type, run.domain, jobMeta)
+                                stage("Deploy: ${jobDisplayName} (${run.deploy_type} - ${run.domain})") {
+                                    executeJob(jobDisplayName, jenkinsJobName, branchToUse, run.deploy_type, run.domain, jobMeta)
+                                }
                             }
                         } else {
-                            executeJob(jobDisplayName, jenkinsJobName, branchToUse, null, null, jobMeta)
+                            stage("Deploy: ${jobDisplayName}") {
+                                executeJob(jobDisplayName, jenkinsJobName, branchToUse, null, null, jobMeta)
+                            }
                         }
                     }
                 }
@@ -213,6 +221,9 @@ def generateAndSendReports() {
     }
 
     if (params.NOTIFY_EMAIL) {
+        echo "DEBUG: Attempting to send email to ${params.NOTIFY_EMAIL}"
+        echo "DEBUG: Subject: [QA Deploy] ${releaseBranch} — ${summary}"
+        
         def htmlBody = """
         <html>
         <body>

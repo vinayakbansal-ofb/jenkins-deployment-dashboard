@@ -140,6 +140,11 @@
             <button class="btn-close-rm" id="btnCloseRM">✕</button>
         </div>
 
+        <div class="rm-nav">
+            <button class="rm-nav-btn active" data-view="rmManagerView">Configuration</button>
+            <button class="rm-nav-btn" data-view="rmHistoryView">Build History</button>
+        </div>
+
         <div class="rm-content" id="rmContentWrapper">
             <!-- MANAGER VIEW -->
             <div id="rmManagerView" class="rm-view">
@@ -237,6 +242,18 @@
                 <div class="monitor-footer">
                     <button class="btn-abort" id="btnAbortRelease">Cancel Release</button>
                     <button class="btn-secondary" id="btnReturnToManager">Edit Selections</button>
+                </div>
+            </div>
+
+            <!-- HISTORY VIEW -->
+            <div id="rmHistoryView" class="rm-view hidden">
+                <div class="history-container">
+                    <div class="history-list" id="rmHistoryList">
+                        <div class="loading-state">
+                            <div class="spinner"></div>
+                            <span>Loading build history...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

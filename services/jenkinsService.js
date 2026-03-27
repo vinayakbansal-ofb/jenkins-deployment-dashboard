@@ -265,7 +265,32 @@ const triggerJob = async (jobName, params = {}) => {
 const fetchReleaseStatus = async () => {
     const jobName = 'QA-Release-Deployment';
     const status = await fetchJobEnvMap(jobName);
-    return status.lastBuild;
+    const lastBuild = status.lastBuild;
+
+    if (lastBuild && lastBuild.number) {
+        try {
+            const stages = await fetchPipelineStages(jobName, lastBuild.number);
+            lastBuild.stages = stages;
+        } catch (e) {
+            console.error('[Jenkins] Stages fetch failed:', e.message);
+        }
+    }
+
+    return lastBuild;
+};
+
+/**
+ * Fetch detailed pipeline stages for a build using wfapi
+ */
+const fetchPipelineStages = async (jobName, buildNumber) => {
+    const url = `${config.JENKINS_BASE_URL}/job/${encodeURIComponent(jobName)}/${buildNumber}/wfapi/describe`;
+    try {
+        const data = await jenkinsGet(url);
+        return data?.stages || [];
+    } catch (err) {
+        console.error(`[Jenkins] Workflow API error: ${err.message}`);
+        return [];
+    }
 };
 
 /**
@@ -276,7 +301,7 @@ const fetchJobLogs = async (jobName, start = 0) => {
     try {
         const res = await fetch(url, {
             headers: getAuthHeader(),
-            timeout: 10000,
+            timeout: 30000,
         });
         
         const more = res.headers.get('x-more-data') === 'true';
