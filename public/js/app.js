@@ -279,6 +279,15 @@ const fetchServerStatus = async (quiet = false) => {
         renderServerStatus();
         return;
     }
+
+    // Immediately show loading state so it's not hidden while fetching
+    const section = $('serverStatusSection');
+    const grid = $('serverGrid');
+    const summary = $('statusSummary');
+    section.classList.remove('hidden');
+    grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted);"><div class="spinner" style="display:inline-block; vertical-align:middle; margin-right:10px;"></div> Checking services...</div>';
+    summary.textContent = 'Checking services...';
+
     try {
         const res = await fetch(`/api/server-status?env=${encodeURIComponent(activeEnv)}`);
         if (!res.ok) throw new Error(`Server: ${res.status}`);
@@ -287,6 +296,8 @@ const fetchServerStatus = async (quiet = false) => {
     } catch (err) {
         console.error('Fetch server status error:', err);
         if (!quiet) showToast(`⚠️ Failed to load Server status for ${activeEnv}`, 'err');
+        grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: #ef4444;">Failed to load server status.</div>';
+        summary.textContent = 'Status unknown';
     }
 };
 
