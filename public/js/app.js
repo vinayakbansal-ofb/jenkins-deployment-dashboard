@@ -36,6 +36,7 @@ let logPolling = false;
 let logStart = 0;
 let monitorPolling = false;
 let scrollLock = true;
+let isFetchingData = false;
 
 // ── Utility ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -82,7 +83,8 @@ const initials = name => {
 
 // ── Derived Data ──────────────────────────────────────────────────────────
 const getEnvs = () => {
-    const envSet = new Set();
+    const defaultEnvs = ['stg1', 'stg2', 'stg3', 'stg4', 'stg5', 'stg6', 'stg7', 'stg8', 'stg9', 'stg10', 'uat1', 'uat2'];
+    const envSet = new Set(defaultEnvs);
     allDeployments.forEach(d => { if (d.environment && d.environment !== '—') envSet.add(d.environment); });
     return ['all', ...Array.from(envSet).sort((a, b) => {
         // Sort: stg1 < stg2 < stg10 < otherstuff
@@ -233,6 +235,9 @@ const populateJobFilter = () => {
 
 // ── Fetch & Refresh ────────────────────────────────────────────────────────
 const fetchData = async (quiet = false) => {
+    if (isFetchingData) return;
+    isFetchingData = true;
+
     if (!quiet) {
         $('loadingState').classList.remove('hidden');
         $('tableWrap').classList.add('hidden');
@@ -261,6 +266,7 @@ const fetchData = async (quiet = false) => {
         $('refreshBtn').classList.remove('spinning');
         $('refreshText').textContent = 'Live';
         document.querySelector('.rdot').classList.remove('loading');
+        isFetchingData = false;
     }
 
     // Also fetch server status

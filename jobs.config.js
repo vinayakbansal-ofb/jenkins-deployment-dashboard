@@ -19,6 +19,7 @@ module.exports = {
 
     // Jobs to track — add or remove job names here freely
     JOBS: [
+        'STG-Clone-Prod-Data',
         'OFB-Compile-Deploy',
         'OASYS-FE',
         'OASYS-TS',
