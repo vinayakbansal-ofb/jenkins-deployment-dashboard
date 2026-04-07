@@ -221,7 +221,14 @@ window.selectEnv = (env) => {
     activeEnv = env;
     renderTabs();
     renderTable();
-    fetchServerStatus(true); // Refresh server status for new env
+    fetchServerStatus(true, true); // quiet = true, isTabSwitch = true
+
+    // Kick off a background Jenkins refresh when switching tabs
+    // so any new deployments are pulled automatically for this fresh view.
+    if (!isFetchingData) {
+        fetchData(true);
+        startCountdown(); // Reset the 30-sec refresh timer
+    }
 };
 
 // ── Filter Population ──────────────────────────────────────────────────────
@@ -273,20 +280,22 @@ const fetchData = async (quiet = false) => {
     await fetchServerStatus(quiet);
 };
 
-const fetchServerStatus = async (quiet = false) => {
+const fetchServerStatus = async (quiet = false, isTabSwitch = false) => {
     if (activeEnv === 'all') {
         serverStatus = [];
         renderServerStatus();
         return;
     }
 
-    // Immediately show loading state so it's not hidden while fetching
-    const section = $('serverStatusSection');
-    const grid = $('serverGrid');
-    const summary = $('statusSummary');
-    section.classList.remove('hidden');
-    grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted);"><div class="spinner" style="display:inline-block; vertical-align:middle; margin-right:10px;"></div> Checking services...</div>';
-    summary.textContent = 'Checking services...';
+    // Only clear existing cards for a spinner if we just switched to a new tab
+    if (isTabSwitch) {
+        const section = $('serverStatusSection');
+        const grid = $('serverGrid');
+        const summary = $('statusSummary');
+        section.classList.remove('hidden');
+        grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: var(--text-muted);"><div class="spinner" style="display:inline-block; vertical-align:middle; margin-right:10px;"></div> Checking services...</div>';
+        summary.textContent = 'Checking services...';
+    }
 
     try {
         const res = await fetch(`/api/server-status?env=${encodeURIComponent(activeEnv)}`);
@@ -296,8 +305,13 @@ const fetchServerStatus = async (quiet = false) => {
     } catch (err) {
         console.error('Fetch server status error:', err);
         if (!quiet) showToast(`⚠️ Failed to load Server status for ${activeEnv}`, 'err');
-        grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: #ef4444;">Failed to load server status.</div>';
-        summary.textContent = 'Status unknown';
+        
+        if (isTabSwitch || !serverStatus.length) {
+            const grid = $('serverGrid');
+            const summary = $('statusSummary');
+            grid.innerHTML = '<div style="grid-column: 1/-1; padding: 20px; text-align: center; color: #ef4444;">Failed to load server status.</div>';
+            summary.textContent = 'Status unknown';
+        }
     }
 };
 
