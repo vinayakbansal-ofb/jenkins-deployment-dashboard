@@ -139,9 +139,16 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     def deployTypeParamName = (jobName == 'Merge-FE') ? 'Platform' : 'DEPLOY_TYPE'
     def domainParamName     = (jobName == 'Merge-FE') ? 'Domain' : 'DOMAIN'
     
+    def finalEnvValue = targetEnv
+    if (meta.env_prefix) {
+        finalEnvValue = meta.env_prefix + targetEnv
+    } else if (jobName == 'OASYS-TS') {
+        finalEnvValue = "ofb_" + targetEnv
+    }
+    
     def jobParams = [
         string(name: branchParamName, value: branch),
-        string(name: 'Env', value: targetEnv)
+        string(name: 'Env', value: finalEnvValue)
     ]
     
     if (deployType) jobParams.add(string(name: deployTypeParamName, value: deployType))

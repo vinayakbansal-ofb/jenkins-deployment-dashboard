@@ -177,6 +177,7 @@ jobs:
     jenkins_job: "OASYS-TS"
     type: "frontend"
     fe_type: "none"
+    env_prefix: "ofb_"
 
   - name: "OFB-Admin"
     jenkins_job: "OfB-Admin"
