@@ -4,6 +4,11 @@
 
 jobs:
   # --- Group 1: Backend / Services ---
+  - name: "STG-Clone-Prod-Data"
+    jenkins_job: "STG-Clone-Prod-Data"
+    type: "backend"
+    fe_type: "none"
+
   - name: "Bheem-Compile-Deploy"
     jenkins_job: "Bheem-Compile-Deploy"
     type: "backend"

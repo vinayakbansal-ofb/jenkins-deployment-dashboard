@@ -133,8 +133,8 @@ def executeJob(displayName, jobName, branch, deployType, domain, meta) {
     def targetEnv = params.STG_ENV ?: "stg1"
     def dryExecution = (params.DRY_RUN == true || params.DR_RUN == true)
     
-    def branchParamName = (jobName == 'Deploy-Libs') ? 'branch_to_deploy' : 
-                         (jobName == 'Merge-FE') ? 'branchName' : 'BRANCH'
+    def branchParamName = meta.branch_param ?: (jobName == 'Deploy-Libs') ? 'branch_to_deploy' : 
+                         (jobName == 'Merge-FE') ? 'branchName' : 'branchName'
     
     def deployTypeParamName = (jobName == 'Merge-FE') ? 'Platform' : 'DEPLOY_TYPE'
     def domainParamName     = (jobName == 'Merge-FE') ? 'Domain' : 'DOMAIN'
